@@ -1,0 +1,12 @@
+apiVersion: korrel8r.openshift.io/v1alpha1
+kind: Korrel8r
+metadata:
+  labels:
+    app.kubernetes.io/name: korrel8r
+    app.kubernetes.io/instance: korrel8r-sample
+    app.kubernetes.io/part-of: korrel8r-operator
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/created-by: korrel8r-operator
+  name: korrel8r-sample
+spec:
+  # TODO(user): Add fields here

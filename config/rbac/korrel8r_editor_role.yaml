@@ -1,0 +1,31 @@
+# permissions for end users to edit korrel8rs.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    app.kubernetes.io/name: clusterrole
+    app.kubernetes.io/instance: korrel8r-editor-role
+    app.kubernetes.io/component: rbac
+    app.kubernetes.io/created-by: korrel8r-operator
+    app.kubernetes.io/part-of: korrel8r-operator
+    app.kubernetes.io/managed-by: kustomize
+  name: korrel8r-editor-role
+rules:
+- apiGroups:
+  - korrel8r.openshift.io
+  resources:
+  - korrel8rs
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - korrel8r.openshift.io
+  resources:
+  - korrel8rs/status
+  verbs:
+  - get
