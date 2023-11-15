@@ -1,47 +1,40 @@
-/*
-Copyright 2023 Alan Conway.
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-*/
+// Copyright: This file is part of korrel8r, released under https://github.com/korrel8r/korrel8r/blob/main/LICENSE
 
 package v1alpha1
 
 import (
+	"github.com/korrel8r/korrel8r/pkg/config"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
-// NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
+// NOTE: Run "make" to regenerate code after modifying this file.
+// JSON tags are required for fields to be serialized.
 
 // Korrel8rSpec defines the desired state of Korrel8r
 type Korrel8rSpec struct {
-	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
+	// Config is the configuration for a korrel8r deployment.
+	//
+	// File paths in the "more" section can load additional configuration files built-in to the korrel8r image.
+	// URLs in the "more" section must be accessible from the korrel8r Pod.
+	Config Config `json:"config"`
 
-	// Foo is an example field of Korrel8r. Edit korrel8r_types.go to remove/update
-	Foo string `json:"foo,omitempty"`
+	// Verbose sets the numeric logging verbosity for the KORREL8R_VERBOSE environment variable.
+	Verbose int `json:"verbose,omitempty"`
 }
+
+// Config wraps the korrel8r Config struct for API code generation.
+type Config config.Config
 
 // Korrel8rStatus defines the observed state of Korrel8r
 type Korrel8rStatus struct {
-	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
+	// Conditions conditions.type is one of "Available", "Progressing", and "Degraded"
+	Conditions []metav1.Condition `json:"conditions,omitempty"`
 }
 
-//+kubebuilder:object:root=true
-//+kubebuilder:subresource:status
-
 // Korrel8r is the Schema for the korrel8rs API
+//
+// +kubebuilder:object:root=true
+// +kubebuilder:subresource:status
 type Korrel8r struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`

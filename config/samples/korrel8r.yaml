@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: korrel8r
+---
+apiVersion: korrel8r.openshift.io/v1alpha1
+kind: Korrel8r
+metadata:
+  labels:
+    app.kubernetes.io/name: korrel8r
+    app.kubernetes.io/instance: korrel8r
+  name: korrel8r
+  namespace: korrel8r
+spec:
+  verbose: 3
+  config:
+    more:
+      - /etc/korrel8r/korrel8r.yaml

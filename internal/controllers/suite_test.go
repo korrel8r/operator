@@ -1,22 +1,9 @@
-/*
-Copyright 2023 Alan Conway.
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-*/
+// Copyright: This file is part of korrel8r, released under https://github.com/korrel8r/korrel8r/blob/main/LICENSE
 
 package controllers
 
 import (
+	"os"
 	"path/filepath"
 	"testing"
 
@@ -49,11 +36,16 @@ func TestAPIs(t *testing.T) {
 
 var _ = BeforeSuite(func() {
 	logf.SetLogger(zap.New(zap.WriteTo(GinkgoWriter), zap.UseDevMode(true)))
-
 	By("bootstrapping test environment")
 	testEnv = &envtest.Environment{
-		CRDDirectoryPaths:     []string{filepath.Join("..", "config", "crd", "bases")},
+		CRDDirectoryPaths:     []string{filepath.Join("..", "..", "config", "crd", "bases")},
 		ErrorIfCRDPathMissing: true,
+	}
+	// Try to find the BinaryAssetsDirectory so test can run directly via 'go test'.
+	dir := filepath.Join("..", "..", "bin", "k8s")
+	if entries, err := os.ReadDir(dir); err == nil && len(entries) == 1 {
+		testEnv.BinaryAssetsDirectory = filepath.Join(dir, entries[0].Name())
+		By("using binary assets directory: " + testEnv.BinaryAssetsDirectory)
 	}
 
 	var err error

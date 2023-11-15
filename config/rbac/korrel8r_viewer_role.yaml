@@ -6,8 +6,8 @@ metadata:
     app.kubernetes.io/name: clusterrole
     app.kubernetes.io/instance: korrel8r-viewer-role
     app.kubernetes.io/component: rbac
-    app.kubernetes.io/created-by: korrel8r-operator
-    app.kubernetes.io/part-of: korrel8r-operator
+    app.kubernetes.io/created-by: korrel8r
+    app.kubernetes.io/part-of: korrel8r
     app.kubernetes.io/managed-by: kustomize
   name: korrel8r-viewer-role
 rules:

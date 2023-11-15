@@ -1,0 +1,54 @@
+apiVersion: operators.coreos.com/v1alpha1
+kind: ClusterServiceVersion
+metadata:
+  annotations:
+    alm-examples: '[]'
+    capabilities: Basic Install
+  name: korrel8r.v0.0.1
+  namespace: placeholder
+spec:
+  apiservicedefinitions: {}
+  customresourcedefinitions:
+    owned:
+    - description: Korrel8r is the Schema for the korrel8rs API
+      displayName: Korrel8r
+      kind: Korrel8r
+      name: korrel8rs.korrel8r.openshift.io
+      version: v1alpha1
+  description: Observability signal correlation engine.
+  displayName: Korrel8r
+  icon:
+  - base64data: ""
+    mediatype: ""
+  install:
+    spec:
+      deployments: null
+    strategy: ""
+  installModes:
+  - supported: false
+    type: OwnNamespace
+  - supported: false
+    type: SingleNamespace
+  - supported: false
+    type: MultiNamespace
+  - supported: true
+    type: AllNamespaces
+  keywords:
+  - observability
+  - signal
+  - correlation
+  - kubernetes
+  - metric
+  - alert
+  - log
+  links:
+  - name: Korrel8r
+    url: https://github.com/korrel8r/korrel8r
+  maintainers:
+  - email: korrel8r@gmail.com
+    name: Korrel8r Project
+  maturity: alpha
+  provider:
+    name: The Korrel8r Project
+    url: https://github.com/korrel8r/korrel8r
+  version: 0.0.0

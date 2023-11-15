@@ -1,4 +1,4 @@
 ## Append samples you want in your CSV to this file as resources ##
 resources:
-- korrel8r_v1alpha1_korrel8r.yaml
+- korrel8r.yaml
 #+kubebuilder:scaffold:manifestskustomizesamples
