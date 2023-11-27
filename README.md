@@ -1,92 +1,57 @@
 # Korrel8r Operator
 
-Deploy [Korrel8r](https://github.com/korrel8r/korrel8r) as a web service in a Kubernetes cluster.
-
-## Description
-
-Read the [Korrel8r Documentation](https://korrel8r.github.io/korrel8r/) for more about Korrel8r.
+Deploys [Korrel8r](https://github.com/korrel8r/korrel8r#readme) as a REST service in a Kubernetes cluster.
+See the [Korrel8r Documentation](https://korrel8r.github.io/korrel8r/) for more about Korrel8r.
 
 ## Getting Started
 
-You’ll need a Kubernetes cluster to run against. You can use [KIND](https://sigs.k8s.io/kind) to get a local cluster for testing, or run against a remote cluster.
-See the [Korrel8r Documentation](https://korrel8r.github.io/korrel8r/) for more about setting up your cluster.
+### Install the operator
 
-**Note:** Your controller will automatically use the current context in your kubeconfig file (i.e. whatever cluster `kubectl cluster-info` shows).
+To install the operator bundle image:
 
+1. Log into your cluster as an admin user.
+1. Install the `operator-sdk` command, see https://sdk.operatorframework.io/docs/installation/
+1. Run the bundle image:
+   ```sh
+   operator-sdk run bundle quay.io/korrel8r/operator-bundle:latest
+   ```
 
-### Running on the cluster
+The operator is now active in you cluster.
 
-1. Install Instances of Custom Resources:
+### Create a Korrel8r resource
 
-```sh
-kubectl apply -f config/samples/
+To create a korrel8r instance with default configuration:
+
+```yaml
+apiVersion: korrel8r.openshift.io/v1alpha1
+kind: Korrel8r
+metadata:
+  name: some-name
+  namespace: some-namespace
 ```
 
-2. Build and push your image to the location specified by `IMG`:
+### Enable the openshift console preview
 
-```sh
-make docker-build docker-push IMG=<some-registry>/korrel8r:tag
+To enable the korrel8r preview in the openshift console, must install openshift logging, and add this annotation to your `ClusterLogging` resource:
+
+``` yaml
+apiVersion: logging.openshift.io/v1
+kind: ClusterLogging
+metadata:
+  annotations:
+    logging.openshift.io/preview-korrel8r-console: enabled
 ```
 
-3. Deploy the controller to the cluster with the image specified by `IMG`:
+## Uninstall the operator
+
+To delete the operator and custom resource definitions:
 
 ```sh
-make deploy IMG=<some-registry>/korrel8r:tag
-```
-
-### Uninstall CRDs
-To delete the CRDs from the cluster:
-
-```sh
-make uninstall
-```
-
-### Undeploy controller
-UnDeploy the controller from the cluster:
-
-```sh
-make undeploy
+operator-sdk cleanup korrel8r
 ```
 
 ## Contributing
 
-See the [Korrel8r Project](https://github.com/korrel8r/korrel8r) for information about contributing.
+- See [HACKING.md](HACKING.md) for information on how to contribute to this operator.
+- See the [Korrel8r Project](https://github.com/korrel8r/korrel8r) for information about contributing to korrel8r itself.
 
-### How it works
-
-This project follows the Kubernetes [Operator pattern](https://kubernetes.io/docs/concepts/extend-kubernetes/operator/).
-
-It uses [Controllers](https://kubernetes.io/docs/concepts/architecture/controller/),
-which provide a reconcile function responsible for synchronizing resources until the desired state is reached on the cluster.
-
-### Test It Out
-
-1. Install the CRDs into the cluster:
-
-```sh
-make install
-```
-
-2. Run your controller (this will run in the foreground, so switch to a new terminal if you want to leave it running):
-
-```sh
-make run
-```
-
-**NOTE:** You can also run this in one step by running: `make install run`
-
-### Modifying the API definitions
-
-If you are editing the API definitions, generate the manifests such as CRs or CRDs using:
-
-```sh
-make manifests
-```
-
-**NOTE:** Run `make --help` for more information on all potential `make` targets
-
-More information can be found via the [Kubebuilder Documentation](https://book.kubebuilder.io/introduction.html)
-
-## License
-
-See: https://github.com/korrel8r/korrel8r/blob/main/LICENSE

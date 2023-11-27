@@ -31,7 +31,7 @@ type Korrel8rStatus struct {
 	Conditions []metav1.Condition `json:"conditions,omitempty"`
 }
 
-// Korrel8r is the Schema for the korrel8rs API
+// Korrel8r is a service that correlates observabililty signals in the cluster.
 //
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status

@@ -4,13 +4,14 @@ metadata:
   annotations:
     alm-examples: '[]'
     capabilities: Basic Install
-  name: korrel8r.v0.0.1
+  name: korrel8r.VERSION
   namespace: placeholder
 spec:
   apiservicedefinitions: {}
   customresourcedefinitions:
     owned:
-    - description: Korrel8r is the Schema for the korrel8rs API
+    - description: Korrel8r is a service that correlates observabililty signals in
+        the cluster.
       displayName: Korrel8r
       kind: Korrel8r
       name: korrel8rs.korrel8r.openshift.io

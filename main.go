@@ -5,8 +5,7 @@ package main
 import (
 	"flag"
 	"os"
-
-	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
+	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc
 	// to ensure that exec-entrypoint and run can make use of them.
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 
@@ -38,9 +37,13 @@ func init() {
 
 func main() {
 	var metricsAddr string
+	var enableLeaderElection bool
 	var probeAddr string
+
 	flag.StringVar(&metricsAddr, "metrics-bind-address", ":9090", "The address the metric endpoint binds to.")
 	flag.StringVar(&probeAddr, "health-probe-bind-address", ":9091", "The address the probe endpoint binds to.")
+	flag.BoolVar(&enableLeaderElection, "leader-elect", false, "Enable leader election to ensure there is only one active controller.")
+
 	opts := zap.Options{Development: true}
 	opts.BindFlags(flag.CommandLine)
 	flag.Parse()
@@ -51,19 +54,20 @@ func main() {
 		Scheme:                 scheme,
 		Metrics:                server.Options{BindAddress: metricsAddr},
 		HealthProbeBindAddress: probeAddr,
+		LeaderElection:         enableLeaderElection,
+		LeaderElectionID:       "korrel8r-operator-lock",
 	})
 	if err != nil {
 		setupLog.Error(err, "Unable to start manager")
 		os.Exit(1)
 	}
 
-	if err = (&controllers.Korrel8rReconciler{
-		Client: mgr.GetClient(),
-		Scheme: mgr.GetScheme(),
-		// Add a Recorder to the reconciler.
-		// This allows the operator author to emit events during reconcilliation.
+	kr := &controllers.Korrel8rReconciler{
+		Client:   mgr.GetClient(),
+		Scheme:   mgr.GetScheme(),
 		Recorder: mgr.GetEventRecorderFor("korrel8r-controller"),
-	}).SetupWithManager(mgr); err != nil {
+	}
+	if err = (kr).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "Unable to create controller")
 		os.Exit(1)
 	}

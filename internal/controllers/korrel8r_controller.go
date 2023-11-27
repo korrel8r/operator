@@ -6,7 +6,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"maps"
 	"os"
 	"reflect"
 	"strconv"
@@ -31,6 +30,7 @@ import (
 
 	"github.com/go-logr/logr"
 	korrel8r "github.com/korrel8r/operator/api/v1alpha1"
+	"golang.org/x/exp/maps"
 	"golang.org/x/exp/slices"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -86,23 +86,27 @@ func (r *Korrel8rReconciler) SetupWithManager(mgr ctrl.Manager) error {
 // Reconcile is the main reconcile loop
 func (r *Korrel8rReconciler) Reconcile(ctx context.Context, req ctrl.Request) (result ctrl.Result, err error) {
 	rc, err := r.newRequestContext(ctx, req)
-
-	defer func() { rc.log.Info("Reconciled", "error", err, "created", rc.created, "updated", rc.updated) }()
-
-	if apierrors.IsNotFound(err) {
-		rc.log.Info("Resource not found") // Nothing to do.
-		return result, nil
-	}
 	if err != nil {
 		return result, err
 	}
+	defer func() { rc.log.Info("Reconciled", "error", err, "created", rc.created, "updated", rc.updated) }()
 
+	err = r.Get(ctx, req.NamespacedName, &rc.korrel8r)
+	if apierrors.IsNotFound(err) {
+		rc.log.Info("Resource not found") // Nothing to do.
+		return result, nil
+	} else if err != nil {
+		return result, err
+	}
+
+	// Update condition on return from reconcile.
 	defer func() {
 		rc.log.Info("Reconciled", "error", err, "created", rc.created, "updated", rc.updated)
+		// Create the new condition
 		condition := metav1.Condition{
 			Type:    ConditionTypeAvailable,
 			Status:  metav1.ConditionTrue,
-			Reason:  "Reconciled",
+			Reason:  ReasonReconciled,
 			Message: "Ready",
 		}
 		if err != nil {
@@ -114,40 +118,30 @@ func (r *Korrel8rReconciler) Reconcile(ctx context.Context, req ctrl.Request) (r
 			}
 		}
 		// Only record an event on status changes.
-		if !meta.IsStatusConditionPresentAndEqual(rc.korrel8r.Status.Conditions, condition.Type, condition.Status) {
+		if r.Recorder != nil && !meta.IsStatusConditionPresentAndEqual(rc.korrel8r.Status.Conditions, condition.Type, condition.Status) {
 			if err != nil {
 				r.Recorder.Eventf(&rc.korrel8r, corev1.EventTypeWarning, ReasonReconciling, "Reconcile error: %v", err)
 			} else {
 				r.Recorder.Eventf(&rc.korrel8r, corev1.EventTypeNormal, ReasonReconciled, "Reconcile succeeded: created: %v updated: %v", rc.created, rc.updated)
 			}
-			meta.SetStatusCondition(&rc.korrel8r.Status.Conditions, condition)
 		}
+		// FIXME always update the condition? If not we don't get re-reconciled?
+		meta.SetStatusCondition(&rc.korrel8r.Status.Conditions, condition)
 		err2 := r.Status().Update(ctx, &rc.korrel8r)
-		if err == nil {
+		if err == nil { // Don't over-write the original error
 			err = err2
 		}
 	}()
-
-	// Fill in default configuration
-	if rc.korrel8r.Spec.Config == nil { // Use default config.
-		rc.korrel8r.Spec.Config = &korrel8r.Config{
-			Include: []string{"/etc/korrel8r/stores/openshift-internal.yaml", "/etc/korrel8r/rules/all.yaml"},
-		}
-		rc.updated = append(rc.updated, rc.kindOf(&rc.korrel8r))
-		if err := r.Update(ctx, &rc.korrel8r); err != nil {
-			return result, err
-		}
-	}
 
 	// Create or update each owned resource
 	nn := req.NamespacedName
 	roleNN := types.NamespacedName{Name: RoleName}
 	for _, f := range []func() error{
+		func() error { return rc.modifyKorrel8r() },
 		func() error { return createOrUpdate(rc, nn, rc.serviceAccount) },
 		func() error { return createOrUpdate(rc, nn, rc.configMap) },
 		func() error { return createOrUpdate(rc, nn, rc.deployment) },
 		func() error { return createOrUpdate(rc, nn, rc.service) },
-
 		func() error { return createOrUpdate(rc, roleNN, rc.clusterRole) },
 		func() error { return createOrUpdate(rc, roleNN, rc.clusterRoleBinding) },
 	} {
@@ -179,7 +173,7 @@ func (r *Korrel8rReconciler) newRequestContext(ctx context.Context, req ctrl.Req
 	_, version, _ := strings.Cut(rc.image, ":")
 	maps.Copy(rc.labels, rc.selector)
 	rc.labels["app.kubernetes.io/version"] = version
-	return rc, r.Get(ctx, req.NamespacedName, &rc.korrel8r)
+	return rc, nil
 }
 
 // requestContext computed for each call to Reconcile
@@ -193,6 +187,21 @@ type requestContext struct {
 	korrel8r korrel8r.Korrel8r
 
 	created, updated []string
+}
+
+func (r *requestContext) modifyKorrel8r() error {
+	// Fill in default if configuration is missing.
+	if r.korrel8r.Spec.Config == nil {
+		r.korrel8r.Spec.Config = &korrel8r.Config{
+			// Default to openshift-internal configuration with all rules enabled.
+			Include: []string{"/etc/korrel8r/stores/openshift-internal.yaml", "/etc/korrel8r/rules/all.yaml"},
+		}
+		r.updated = append(r.updated, r.kindOf(&r.korrel8r))
+		if err := r.Update(r.ctx, &r.korrel8r); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (r *requestContext) configMap(configMap *corev1.ConfigMap) (bool, error) {
@@ -343,6 +352,7 @@ func (r *requestContext) clusterRole(got *rbacv1.ClusterRole) (bool, error) {
 	return update(r, &want.Rules, &got.Rules, "Updated clusterrole rules"), nil
 }
 
+// FIXME revisit number, name and ownership of role bindings. Finalizer for CRB?
 func (r *requestContext) clusterRoleBinding(got *rbacv1.ClusterRoleBinding) (bool, error) {
 	want := &rbacv1.ClusterRoleBinding{
 		RoleRef: rbacv1.RoleRef{

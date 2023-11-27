@@ -4,7 +4,7 @@ go 1.21
 
 require (
 	github.com/go-logr/logr v1.3.0
-	github.com/korrel8r/korrel8r v0.5.5
+	github.com/korrel8r/korrel8r v0.5.7
 	github.com/onsi/ginkgo/v2 v2.11.0
 	github.com/onsi/gomega v1.27.10
 	golang.org/x/exp v0.0.0-20231110203233-9a3e6036ecaa

@@ -143,14 +143,13 @@ spec:
 				Expect(found.GetOwnerReferences()).To(ContainElement(ownerRef))
 			}
 
+			roleNN := types.NamespacedName{Name: RoleName}
 			{
-				By("Checking if RoleBinding was successfully created in the reconciliation")
-				found := &rbacv1.RoleBinding{}
-				Eventually(func() error { return k8sClient.Get(ctx, nsName, found) }, eventuallyArgs...).Should(Succeed())
-				Expect(found.GetOwnerReferences()).To(ContainElement(ownerRef))
+				By("Checking if ClusterRoleBinding was successfully created in the reconciliation")
+				found := &rbacv1.ClusterRoleBinding{}
+				Eventually(func() error { return k8sClient.Get(ctx, roleNN, found) }, eventuallyArgs...).Should(Succeed())
 				subject := rbacv1.Subject{
-					Kind:      "User",
-					APIGroup:  "rbac.authorization.k8s.io",
+					Kind:      "ServiceAccount",
 					Name:      "test-korrel8r",
 					Namespace: "test-korrel8r",
 				}
