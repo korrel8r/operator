@@ -128,6 +128,17 @@ func (r *Korrel8rReconciler) Reconcile(ctx context.Context, req ctrl.Request) (r
 		}
 	}()
 
+	// Fill in default configuration
+	if rc.korrel8r.Spec.Config == nil { // Use default config.
+		rc.korrel8r.Spec.Config = &korrel8r.Config{
+			Include: []string{"/etc/korrel8r/stores/openshift-internal.yaml", "/etc/korrel8r/rules/all.yaml"},
+		}
+		rc.updated = append(rc.updated, rc.kindOf(&rc.korrel8r))
+		if err := r.Update(ctx, &rc.korrel8r); err != nil {
+			return result, err
+		}
+	}
+
 	// Create or update each owned resource
 	nn := req.NamespacedName
 	roleNN := types.NamespacedName{Name: RoleName}

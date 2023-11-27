@@ -13,10 +13,10 @@ import (
 // Korrel8rSpec defines the desired state of Korrel8r
 type Korrel8rSpec struct {
 	// Config is the configuration for a korrel8r deployment.
+	// If not provided there is a default configuration suitable for use in an openshift cluster.
 	//
-	// File paths in the "more" section can load additional configuration files built-in to the korrel8r image.
-	// URLs in the "more" section must be accessible from the korrel8r Pod.
-	Config Config `json:"config"`
+	// The "include" section can load additional configuration files provided at /etc/korrel8r
+	Config *Config `json:"config,omitempty"`
 
 	// Verbose sets the numeric logging verbosity for the KORREL8R_VERBOSE environment variable.
 	Verbose int `json:"verbose,omitempty"`

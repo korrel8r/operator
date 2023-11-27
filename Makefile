@@ -92,10 +92,10 @@ test: manifests generate fmt vet envtest ## Run tests.
 .PHONY: build
 build: manifests generate fmt vet ## Build manager binary.
 	go mod tidy
-	go build -o bin/manager cmd/main.go
+	go build -o bin/manager cmd/korrel8r-operator/main.go
 
 KORREL8R_IMAGE?=quay.io/korrel8r/korrel8r:latest
-run: manifests generate fmt vet ## Run a controller from your host.
+run: manifests generate fmt vet install ## Run a controller from your host.
 	KORREL8R_IMAGE=$(KORREL8R_IMAGE) go run cmd/korrel8r-operator/main.go
 
 # If you wish built the manager image targeting other platforms you can use the --platform flag.

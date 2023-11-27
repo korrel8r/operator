@@ -37,9 +37,9 @@ spec:
             properties:
               config:
                 description: "Config is the configuration for a korrel8r deployment.
-                  \n File paths in the \"more\" section can load additional configuration
-                  files built-in to the korrel8r image. URLs in the \"more\" section
-                  must be accessible from the korrel8r Pod."
+                  If not provided there is a default configuration suitable for use
+                  in an openshift cluster. \n The \"include\" section can load additional
+                  configuration files provided at /etc/korrel8r"
                 properties:
                   groups:
                     description: Groups defines short names for groups of related
@@ -66,9 +66,9 @@ spec:
                       - name
                       type: object
                     type: array
-                  more:
-                    description: More is a list of file names or URLs for additional
-                      configuration files to load.
+                  include:
+                    description: Include lists additional configuration files or URLs
+                      to include.
                     items:
                       type: string
                     type: array
@@ -157,8 +157,6 @@ spec:
                 description: Verbose sets the numeric logging verbosity for the KORREL8R_VERBOSE
                   environment variable.
                 type: integer
-            required:
-            - config
             type: object
           status:
             description: Korrel8rStatus defines the observed state of Korrel8r

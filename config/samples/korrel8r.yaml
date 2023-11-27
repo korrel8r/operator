@@ -13,6 +13,3 @@ metadata:
   namespace: korrel8r
 spec:
   verbose: 3
-  config:
-    more:
-      - /etc/korrel8r/korrel8r.yaml
