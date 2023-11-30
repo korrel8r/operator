@@ -1,5 +1,5 @@
 # VERSION defines the project version for the bundle.
-VERSION ?= 0.0.5
+VERSION ?= 0.0.6
 
 # Bundle options.
 DEFAULT_CHANNEL ?= stable

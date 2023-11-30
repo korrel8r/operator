@@ -18,10 +18,10 @@ metadata:
         }
       ]
     capabilities: Basic Install
-    createdAt: "2023-11-30T15:23:29Z"
+    createdAt: "2023-11-30T20:58:42Z"
     operators.operatorframework.io/builder: operator-sdk-v1.32.0
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v3
-  name: korrel8r.v0.0.5
+  name: korrel8r.v0.0.6
   namespace: placeholder
 spec:
   apiservicedefinitions: {}
@@ -254,4 +254,4 @@ spec:
   provider:
     name: The Korrel8r Project
     url: https://github.com/korrel8r/korrel8r
-  version: 0.0.5
+  version: 0.0.6

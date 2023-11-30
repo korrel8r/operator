@@ -54,8 +54,9 @@ func main() {
 		Scheme:                 scheme,
 		Metrics:                server.Options{BindAddress: metricsAddr},
 		HealthProbeBindAddress: probeAddr,
-		LeaderElection:         enableLeaderElection,
-		LeaderElectionID:       "korrel8r-operator-lock",
+		// FIXME leader election ignored, fix this:
+		// LeaderElection:         enableLeaderElection,
+		// LeaderElectionID:       "korrel8r-operator-lock",
 	})
 	if err != nil {
 		setupLog.Error(err, "Unable to start manager")
