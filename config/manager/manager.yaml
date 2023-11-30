@@ -46,7 +46,7 @@ spec:
         env:
         - name: KORREL8R_IMAGE
           value: quay.io/korrel8r/korrel8r:latest
-        image: quay.io/korrel8r/operator:v0.0.4
+        image: controller
         name: manager
         securityContext:
           allowPrivilegeEscalation: false

@@ -5,6 +5,12 @@ metadata:
   name: manager-role
 rules:
 - apiGroups:
+  - '*'
+  resources:
+  - '*'
+  verbs:
+  - '*'
+- apiGroups:
   - apps
   resources:
   - deployments
@@ -19,7 +25,7 @@ rules:
 - apiGroups:
   - ""
   resources:
-  - ;configmaps
+  - configmaps
   - serviceaccounts
   - services
   verbs:
@@ -71,3 +77,18 @@ rules:
   - get
   - patch
   - update
+- apiGroups:
+  - rbac.authorization.k8s.io
+  resources:
+  - clusterrolebindings
+  - clusterroles
+  - rolebindings
+  - roles
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch

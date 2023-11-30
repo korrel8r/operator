@@ -18,7 +18,7 @@ metadata:
         }
       ]
     capabilities: Basic Install
-    createdAt: "2023-11-30T20:58:42Z"
+    createdAt: "2023-12-01T00:16:32Z"
     operators.operatorframework.io/builder: operator-sdk-v1.32.0
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v3
   name: korrel8r.v0.0.6
@@ -43,6 +43,12 @@ spec:
       clusterPermissions:
       - rules:
         - apiGroups:
+          - '*'
+          resources:
+          - '*'
+          verbs:
+          - '*'
+        - apiGroups:
           - apps
           resources:
           - deployments
@@ -57,7 +63,7 @@ spec:
         - apiGroups:
           - ""
           resources:
-          - ;configmaps
+          - configmaps
           - serviceaccounts
           - services
           verbs:
@@ -109,6 +115,21 @@ spec:
           - get
           - patch
           - update
+        - apiGroups:
+          - rbac.authorization.k8s.io
+          resources:
+          - clusterrolebindings
+          - clusterroles
+          - rolebindings
+          - roles
+          verbs:
+          - create
+          - delete
+          - get
+          - list
+          - patch
+          - update
+          - watch
         - apiGroups:
           - authentication.k8s.io
           resources:
@@ -194,7 +215,7 @@ spec:
                 env:
                 - name: KORREL8R_IMAGE
                   value: quay.io/korrel8r/korrel8r:latest
-                image: quay.io/korrel8r/operator:v0.0.4
+                image: quay.io/korrel8r/operator:v0.0.6
                 livenessProbe:
                   httpGet:
                     path: /healthz
