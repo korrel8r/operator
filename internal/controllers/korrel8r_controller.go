@@ -198,8 +198,8 @@ func (r *requestContext) modifyKorrel8r() error {
 	// Fill in default if configuration is missing.
 	if r.korrel8r.Spec.Config == nil {
 		r.korrel8r.Spec.Config = &korrel8r.Config{
-			// Default to openshift-internal configuration with all rules enabled.
-			Include: []string{"/etc/korrel8r/stores/openshift-internal.yaml", "/etc/korrel8r/rules/all.yaml"},
+			// FIXME: should  Default to openshift-internal configuration with all rules enabled.
+			Include: []string{"/etc/korrel8r/stores/openshift-external.yaml", "/etc/korrel8r/rules/all.yaml"},
 		}
 		r.updated = append(r.updated, r.kindOf(&r.korrel8r))
 		if err := r.Update(r.ctx, &r.korrel8r); err != nil {
@@ -239,7 +239,7 @@ func (r *requestContext) deployment(got *appsv1.Deployment) (bool, error) {
 						{
 							Name:    ApplicationName,
 							Image:   r.image,
-							Command: []string{"korrel8r", "web", "--https", ":8443", "--cert", "/secrets/tls.crt", "--key", "/secrets/tls.key"},
+							Command: []string{"korrel8r", "web", "--https", ":8443", "--cert", "/secrets/tls.crt", "--key", "/secrets/tls.key", "--config", "/config/korrel8r.yaml"},
 							VolumeMounts: []corev1.VolumeMount{
 								{
 									Name:      "secrets",
@@ -391,8 +391,8 @@ func (r *requestContext) clusterRoleBinding(got *rbacv1.ClusterRoleBinding) (boo
 func update[T any](r *requestContext, expected, actual *T, msg string) (changed bool) {
 	equal := reflect.DeepEqual(*expected, *actual)
 	if !equal {
+		r.log.Info(msg, "want", expected, "got", actual)
 		*actual = *expected
-		r.log.V(2).Info(msg)
 	}
 	return !equal
 }
