@@ -4,8 +4,10 @@ metadata:
   annotations:
     alm-examples: '[]'
     capabilities: Basic Install
-  name: korrel8r.VERSION
-  namespace: placeholder
+    categories: Monitoring, Logging & Tracing
+    repository: https://github.com/korrel8r/korrel8r
+    support: Korrel8r Project
+  name: korrel8r
 spec:
   apiservicedefinitions: {}
   customresourcedefinitions:
@@ -16,21 +18,28 @@ spec:
       kind: Korrel8r
       name: korrel8rs.korrel8r.openshift.io
       version: v1alpha1
-  description: Observability signal correlation engine.
+  description: |-
+    Korrel8r is a correlation engine for observable signals.
+
+    It can relate Kubernetes objects with many types of signal data.
+    The data can be stored in separate signal stores, and encoded using different schema.
+
+    Given a _start_ object, korrel8r searches for a chain of rules to related _goal_ objects.
+    Korrel8r can also show the _neighbourhood_ of all data related to an object of interest.
+
+    A REST API allows clients to make correlation queries.
+    It can be deployed inside a cluster, or run outside and connect to signal stores in the cluster.
   displayName: Korrel8r
-  icon:
-  - base64data: ""
-    mediatype: ""
   install:
     spec:
       deployments: null
     strategy: ""
   installModes:
-  - supported: false
+  - supported: true
     type: OwnNamespace
-  - supported: false
+  - supported: true
     type: SingleNamespace
-  - supported: false
+  - supported: true
     type: MultiNamespace
   - supported: true
     type: AllNamespaces
@@ -38,17 +47,14 @@ spec:
   - observability
   - signal
   - correlation
-  - kubernetes
-  - metric
-  - alert
-  - log
   links:
-  - name: Korrel8r
+  - name: Documentation
+    url: https://korrel8r.github.io/korrel8r
+  - name: Source Code and Issues
     url: https://github.com/korrel8r/korrel8r
   maintainers:
   - email: korrel8r@gmail.com
     name: Korrel8r Project
-  maturity: alpha
   provider:
     name: The Korrel8r Project
     url: https://github.com/korrel8r/korrel8r

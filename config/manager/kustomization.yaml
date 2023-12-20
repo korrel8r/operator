@@ -1,8 +1,9 @@
+kind: Kustomization
+apiVersion: kustomize.config.k8s.io/v1beta1
 resources:
 - manager.yaml
-apiVersion: kustomize.config.k8s.io/v1beta1
-kind: Kustomization
+
 images:
 - name: controller
   newName: quay.io/korrel8r/operator
-  newTag: v0.0.7
+  newTag: 0.0.8-dev4

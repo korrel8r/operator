@@ -1,5 +1,4 @@
 // Copyright: This file is part of korrel8r, released under https://github.com/korrel8r/korrel8r/blob/main/LICENSE
-
 package controllers
 
 import (
@@ -9,26 +8,29 @@ import (
 	"reflect"
 	"time"
 
+	"github.com/go-logr/logr"
+	"github.com/go-logr/stdr"
+	korrel8rv1alpha1 "github.com/korrel8r/operator/api/v1alpha1"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	routev1 "github.com/openshift/api/route/v1"
 	"gopkg.in/yaml.v2"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
+	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-
-	korrel8rv1alpha1 "github.com/korrel8r/operator/api/v1alpha1"
 )
+
+const Korrel8rName = "test-korrel8r"
 
 var _ = Describe("Korrel8r controller", func() {
 	Context("Korrel8r controller test", func() {
-
-		const Korrel8rName = "test-korrel8r"
-
-		ctx := context.Background()
+		ctx := logr.NewContext(context.Background(), stdr.New(nil))
 
 		namespace := &corev1.Namespace{
 			ObjectMeta: metav1.ObjectMeta{
@@ -43,10 +45,7 @@ var _ = Describe("Korrel8r controller", func() {
 			By("Creating the Namespace to perform the tests: " + namespace.Name)
 			err := k8sClient.Create(ctx, namespace)
 			Expect(err).To(Not(HaveOccurred()))
-
-			image := "github.com/korrel8r/korrel8r:latest"
-			By("Setting env var " + ImageEnv + "=" + image)
-			err = os.Setenv(ImageEnv, image)
+			err = os.Setenv(ImageEnv, "github.com/korrel8r/korrel8r:latest")
 			Expect(err).To(Not(HaveOccurred()))
 		})
 
@@ -56,9 +55,7 @@ var _ = Describe("Korrel8r controller", func() {
 			// More info: https://book.kubebuilder.io/reference/envtest.html#testing-considerations
 			By("Deleting the Namespace to perform the tests")
 			_ = k8sClient.Delete(ctx, namespace)
-
-			By("Removing the Image ENV VAR which stores the Operand image")
-			_ = os.Unsetenv("KORREL8R_IMAGE")
+			_ = os.Unsetenv(ImageEnv)
 		})
 
 		It("should successfully reconcile a custom resource for Korrel8r", func() {
@@ -90,14 +87,10 @@ spec:
 			eventuallyArgs := []any{time.Second, time.Second / 10} // Timeout for all Eventually() tests
 
 			By("Reconciling the custom resource created")
-			korrel8rReconciler := &Korrel8rReconciler{
-				Client: k8sClient,
-				Scheme: k8sClient.Scheme(),
-			}
-			_, err := korrel8rReconciler.Reconcile(ctx, reconcile.Request{
-				NamespacedName: nsName,
-			})
-			Expect(err).To(Not(HaveOccurred()))
+			korrel8rReconciler := NewKorrel8rReconciler(k8sClient, k8sClient.Scheme(), record.NewFakeRecorder(1000))
+			result, err := korrel8rReconciler.Reconcile(ctx, reconcile.Request{NamespacedName: nsName})
+			Expect(err).NotTo(HaveOccurred())
+			Expect(result).To(BeZero())
 
 			{
 				By("Checking if ConfigMap was successfully created in the reconciliation")
@@ -150,8 +143,8 @@ spec:
 				Eventually(func() error { return k8sClient.Get(ctx, roleNN, found) }, eventuallyArgs...).Should(Succeed())
 				subject := rbacv1.Subject{
 					Kind:      "ServiceAccount",
-					Name:      "test-korrel8r",
-					Namespace: "test-korrel8r",
+					Name:      Korrel8rName,
+					Namespace: Korrel8rName,
 				}
 				Expect(found.Subjects).To(Equal([]rbacv1.Subject{subject}))
 			}
@@ -178,6 +171,20 @@ spec:
 					}
 					return err
 				}, eventuallyArgs...).Should(Succeed())
+			}
+
+			{
+				By("Checking if Route was successfully created in the reconciliation")
+				found := &routev1.Route{}
+				Eventually(func() error {
+					err := k8sClient.Get(ctx, nsName, found)
+					if meta.IsNoMatchError(err) {
+						Skip("cluster does not support route")
+					}
+					return err
+				}, eventuallyArgs...).Should(Succeed())
+				Expect(found.GetOwnerReferences()).To(ContainElement(ownerRef))
+				//				Expect(found.Spec.To).To(Equal(nil), "route target doesn't match")
 			}
 		})
 	})

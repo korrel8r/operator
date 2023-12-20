@@ -1,13 +1,14 @@
-
 # Binaries for programs and plugins
 *.exe
 *.exe~
 *.dll
 *.so
 *.dylib
-bin
-testbin/*
-Dockerfile.cross
+/bin
+/testbin/*
+/Dockerfile.cross
+/bundle.Dockerfile
+/bundle/
 
 # Test binary, build with `go test -c`
 *.test
