@@ -2,31 +2,78 @@
 
 ## Getting Started
 
+This project follows the Kubernetes [Operator pattern](https://kubernetes.io/docs/concepts/extend-kubernetes/operator/).
+
+It uses [Controllers](https://kubernetes.io/docs/concepts/architecture/controller/),
+which provide a reconcile function responsible for synchronizing resources until the desired state is reached on the cluster.
+
 You’ll need a Kubernetes cluster to run against.
 You can use [KIND](https://sigs.k8s.io/kind) to get a local cluster for testing, or run against a remote cluster.
 See the [Korrel8r Documentation](https://korrel8r.github.io/korrel8r/) for more about setting up your cluster.
 
 **Note:** Your controller will automatically use the current context in your kubeconfig file (i.e. whatever cluster `kubectl cluster-info` shows).
 
-### Running on the cluster
+## Testing the operator
 
-1. Install Instances of Custom Resources:
-
-```sh
-kubectl apply -f config/samples/korrel8r.yaml
-```
-
-2. Build and push your image to the location specified by `IMG`:
+Start the operator using one of the methods below, then use this script to verify it is working:
 
 ```sh
-make docker-build docker-push IMG=<some-registry>/korrel8r:tag
+hack/smoketest.sh
 ```
 
-3. Deploy the controller to the cluster with the image specified by `IMG`:
+The script creates a `Korrel8r` instance and verifies that it responds to REST API calls.
+If your operator is working correctly it should print some messages ending with "Success."
+
+You can customize your own korrel8r resource, and use a browser or REST tools to query it.
+
+### Running as a local process.
+
+You can run the controller on your own development machine, outside the cluster. This is ideal for debugging.
+
+1. Install the CRDs into the cluster:
 
 ```sh
-make deploy IMG=<some-registry>/korrel8r:tag
+make install
 ```
+
+1. Run the controller (this will run in the foreground, so switch to a new terminal if you want to leave it running):
+
+```sh
+make run
+```
+
+**NOTE:** You can also run this in one step by running: `make install run`
+
+### Deploying via kustomize
+
+1. Build and push your image to the location specified by `IMAGE`, which should be a base image name with no tag:
+
+```sh
+make image-build image-push IMAGE=<some-image>
+```
+
+1. Deploy the controller to the cluster with the image specified by `IMAGE`:
+
+```sh
+make deploy IMG=<some-image>
+```
+
+### Deploy as a bundle image
+
+1. Build and push your image to the location specified by `IMAGE`, which should be a base image name with no tag.
+This will create images $(IMAGE):$(VERSION) and $(IMAGE)-bundle:$(VERSION)
+
+```sh
+make push-all IMAGE=<some-image>
+```
+
+1. Run the bundle image on your cluster.
+
+```sh
+make bundle-run IMAGE=<some-image>
+```
+
+## Cleaning up
 
 ### Uninstall CRDs
 To delete the CRDs from the cluster:
@@ -35,39 +82,21 @@ To delete the CRDs from the cluster:
 make uninstall
 ```
 
-### Undeploy controller
-UnDeploy the controller from the cluster:
+### Undeploy the controller
 
 ```sh
 make undeploy
 ```
 
-## Contributing
+## Debugging
 
-### How it works
+The `KORREL8R_VERBOSE` environment variable to a numeric value to enable debug logs for the operator:
 
-This project follows the Kubernetes [Operator pattern](https://kubernetes.io/docs/concepts/extend-kubernetes/operator/).
+0. The default - some start-up messages, and a single suceess/fail message per reconcile.
+1. Also list the objects modified during reconciliation.
+2. Also print a diff of each object modified during reconciliation.
 
-It uses [Controllers](https://kubernetes.io/docs/concepts/architecture/controller/),
-which provide a reconcile function responsible for synchronizing resources until the desired state is reached on the cluster.
-
-### Test It Out
-
-1. Install the CRDs into the cluster:
-
-```sh
-make install
-```
-
-2. Run your controller (this will run in the foreground, so switch to a new terminal if you want to leave it running):
-
-```sh
-make run
-```
-
-**NOTE:** You can also run this in one step by running: `make install run`
-
-### Modifying the API definitions
+## Modifying the API definitions
 
 If you are editing the API definitions, generate the manifests such as CRs or CRDs using:
 

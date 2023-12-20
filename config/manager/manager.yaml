@@ -43,9 +43,6 @@ spec:
       containers:
       - command:
         - /manager
-        env:
-        - name: KORREL8R_IMAGE
-          value: quay.io/korrel8r/korrel8r:latest
         image: controller
         name: manager
         securityContext:

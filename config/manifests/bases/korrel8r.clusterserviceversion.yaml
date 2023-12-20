@@ -4,7 +4,10 @@ metadata:
   annotations:
     alm-examples: '[]'
     capabilities: Basic Install
-  name: korrel8r.VERSION
+    categories: Monitoring, Logging & Tracing
+    repository: https://github.com/korrel8r/korrel8r
+    support: Korrel8r Project
+  name: korrel8r.v0.0.0
   namespace: placeholder
 spec:
   apiservicedefinitions: {}
@@ -16,11 +19,13 @@ spec:
       kind: Korrel8r
       name: korrel8rs.korrel8r.openshift.io
       version: v1alpha1
-  description: Observability signal correlation engine.
+  description: Korrel8r is a correlation engine that relates Kubernetes objects to
+    different types of obsevable signal data.
   displayName: Korrel8r
   icon:
-  - base64data: ""
-    mediatype: ""
+  - base64data: |
+      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
+    mediatype: image/png
   install:
     spec:
       deployments: null
@@ -38,17 +43,16 @@ spec:
   - observability
   - signal
   - correlation
-  - kubernetes
-  - metric
-  - alert
-  - log
   links:
-  - name: Korrel8r
+  - name: Documentation
+    url: https://korrel8r.github.io/korrel8r
+  - name: Source Code and Issues
     url: https://github.com/korrel8r/korrel8r
   maintainers:
   - email: korrel8r@gmail.com
     name: Korrel8r Project
   maturity: alpha
+  minKubeVersion: 1.18.3
   provider:
     name: The Korrel8r Project
     url: https://github.com/korrel8r/korrel8r

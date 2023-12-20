@@ -5,87 +5,61 @@ package main
 import (
 	"flag"
 	"os"
-	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc
+	"strconv"
+
+	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	// to ensure that exec-entrypoint and run can make use of them.
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 
+	"github.com/go-logr/stdr"
+	"github.com/korrel8r/operator/controllers"
 	"k8s.io/apimachinery/pkg/runtime"
-	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
-	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
-	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/metrics/server"
-
-	korrel8rv1alpha1 "github.com/korrel8r/operator/api/v1alpha1"
-	"github.com/korrel8r/operator/internal/controllers"
 	//+kubebuilder:scaffold:imports
 )
 
-var (
-	scheme   = runtime.NewScheme()
-	setupLog = ctrl.Log.WithName("korrel8r")
-)
-
-func init() {
-	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
-
-	utilruntime.Must(korrel8rv1alpha1.AddToScheme(scheme))
-	//+kubebuilder:scaffold:scheme
-}
+const verboseEnv = "KORREL8R_VERBOSE"
 
 func main() {
-	var metricsAddr string
-	var enableLeaderElection bool
-	var probeAddr string
-
-	flag.StringVar(&metricsAddr, "metrics-bind-address", ":9090", "The address the metric endpoint binds to.")
-	flag.StringVar(&probeAddr, "health-probe-bind-address", ":9091", "The address the probe endpoint binds to.")
-	flag.BoolVar(&enableLeaderElection, "leader-elect", false, "Enable leader election to ensure there is only one active controller.")
-
-	opts := zap.Options{Development: true}
-	opts.BindFlags(flag.CommandLine)
+	metricsAddr := flag.String("metrics-bind-address", ":9090", "The address the metric endpoint binds to.")
+	probeAddr := flag.String("health-probe-bind-address", ":9091", "The address the probe endpoint binds to.")
+	verbose := flag.Int("verbose", 0, "Logging verbosity")
 	flag.Parse()
+	if env := os.Getenv(verboseEnv); env != "" && *verbose == 0 {
+		*verbose, _ = strconv.Atoi(env)
+	}
 
-	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
+	stdr.SetVerbosity(*verbose)
+	log := stdr.New(nil).WithName(controllers.ApplicationName)
+	ctrl.SetLogger(log)
 
+	check := func(err error, msg string) {
+		if err != nil {
+			log.Error(err, msg)
+			os.Exit(1)
+		}
+	}
+
+	scheme := runtime.NewScheme()
+	check(controllers.AddToScheme(scheme), "Cannot add controller types to scheme")
 	mgr, err := manager.New(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme:                 scheme,
-		Metrics:                server.Options{BindAddress: metricsAddr},
-		HealthProbeBindAddress: probeAddr,
-		// FIXME leader election ignored, fix this:
-		// LeaderElection:         enableLeaderElection,
-		// LeaderElectionID:       "korrel8r-operator-lock",
+		Metrics:                server.Options{BindAddress: *metricsAddr},
+		HealthProbeBindAddress: *probeAddr,
 	})
-	if err != nil {
-		setupLog.Error(err, "Unable to start manager")
-		os.Exit(1)
-	}
+	check(err, "Unable to start manager")
 
-	kr := &controllers.Korrel8rReconciler{
-		Client:   mgr.GetClient(),
-		Scheme:   mgr.GetScheme(),
-		Recorder: mgr.GetEventRecorderFor("korrel8r-controller"),
-	}
-	if err = (kr).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "Unable to create controller")
-		os.Exit(1)
-	}
-	//+kubebuilder:scaffold:builder
+	kr := controllers.NewKorrel8rReconciler(
+		mgr.GetClient(),
+		mgr.GetScheme(),
+		mgr.GetEventRecorderFor(controllers.ApplicationName))
+	check(kr.SetupWithManager(mgr), "Unable to create controller")
+	check(mgr.AddHealthzCheck("healthz", healthz.Ping), "Unable to set up health check")
+	check(mgr.AddReadyzCheck("readyz", healthz.Ping), "Unable to set up ready check")
 
-	if err := mgr.AddHealthzCheck("healthz", healthz.Ping); err != nil {
-		setupLog.Error(err, "Unable to set up health check")
-		os.Exit(1)
-	}
-	if err := mgr.AddReadyzCheck("readyz", healthz.Ping); err != nil {
-		setupLog.Error(err, "Unable to set up ready check")
-		os.Exit(1)
-	}
-
-	setupLog.Info("Starting manager")
-	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {
-		setupLog.Error(err, "Problem running manager")
-		os.Exit(1)
-	}
+	log.Info("Starting manager")
+	check(mgr.Start(ctrl.SetupSignalHandler()), "Problem running manager")
 }
