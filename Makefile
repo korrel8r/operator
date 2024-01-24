@@ -46,7 +46,7 @@ SHELL = /usr/bin/env bash -o pipefail
 .SHELLFLAGS = -ec
 
 .PHONY: all
-all: build test
+all: build test doc
 
 ##@ General
 
@@ -247,3 +247,12 @@ push-all: image-push bundle-push catalog-push
 
 push-latest:
 	docker push $(BUNDLE_IMG) $(IMAGE_TAG_BASE)-bundle:latest
+
+.PHONY: doc
+doc: doc/zz_api-ref.adoc
+
+doc/zz_api-ref.adoc: $(shell find api -name '*.go') $(shell find hack/crd-ref-docs) bin/crd-ref-docs
+	bin/crd-ref-docs --source-path api --config hack/crd-ref-docs/config.yaml --templates-dir hack/crd-ref-docs/templates --output-path $@
+
+bin/crd-ref-docs:
+	GOBIN=$(PWD)/bin go install github.com/elastic/crd-ref-docs@latest
