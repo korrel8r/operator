@@ -52,8 +52,8 @@ import (
 //+kubebuilder:rbac:groups=route.openshift.io,resources=routes,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=rbac.authorization.k8s.io,resources=roles;rolebindings;clusterroles;clusterrolebindings,verbs=get;list;watch;create;update;patch;delete
 //
-// TODO need read-only access to the API server to follow k8s rules. Restrict for normal users?
-//+kubebuilder:rbac:groups=*,resources=*,verbs=get;list;watch
+// TODO restrict to read-only access. Restrict for normal users?
+//+kubebuilder:rbac:groups=*,resources=*,verbs=*
 
 const (
 	ApplicationName        = "korrel8r"

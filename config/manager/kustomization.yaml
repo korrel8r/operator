@@ -6,4 +6,4 @@ resources:
 images:
 - name: controller
   newName: quay.io/korrel8r/operator
-  newTag: 0.0.8-dev4
+  newTag: 0.0.8
