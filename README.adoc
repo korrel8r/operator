@@ -1,0 +1,7 @@
+# Korrel8r Operator
+
+This operator deploys https://github.com/korrel8r/korrel8r#readme[Korrel8r] as a REST service in a Kubernetes cluster.
+
+- https://korrel8r.github.io/korrel8r/#installing-korrel8r-ocp[Installation guide]
+- link:doc/HACKING.adoc[Contributing to the code]
+- link:doc/HACKING-DOC.adoc[Contributing to the documentation]

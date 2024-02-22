@@ -8,6 +8,10 @@ bin
 testbin/*
 Dockerfile.cross
 
+# Generated bundle
+/bundle/
+/bundle.Dockerfile
+
 # Test binary, build with `go test -c`
 *.test
 
