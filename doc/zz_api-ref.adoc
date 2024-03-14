@@ -30,10 +30,10 @@ Config wraps the korrel8r Config struct for API code generation.
 [cols="25a,75a", options="header"]
 |===
 | Field | Description
-| *`rules`* __xref:{anchor_prefix}-github-com-korrel8r-korrel8r-pkg-config-rule[$$Rule$$] array__ | Rules define the relationships that korrel8r will follow.
-| *`groups`* __xref:{anchor_prefix}-github-com-korrel8r-korrel8r-pkg-config-group[$$Group$$] array__ | Groups defines short names for groups of related classes.
-| *`stores`* __StoreConfig array__ | Stores is a list of store configurations.
-| *`include`* __string array__ | Include lists additional configuration files or URLs to include.
+| *`rules`* __xref:{anchor_prefix}-github-com-korrel8r-korrel8r-pkg-config-rule[$$Rule$$] array__ | Rules define the relationships that korrel8r will follow. +
+| *`groups`* __xref:{anchor_prefix}-github-com-korrel8r-korrel8r-pkg-config-group[$$Group$$] array__ | Groups defines short names for groups of related classes. +
+| *`stores`* __StoreConfig array__ | Stores is a list of store configurations. +
+| *`include`* __string array__ | Include lists additional configuration files or URLs to include. +
 |===
 
 
@@ -66,10 +66,12 @@ Korrel8rSpec defines the desired state of Korrel8r
 [cols="25a,75a", options="header"]
 |===
 | Field | Description
-| *`config`* __xref:{anchor_prefix}-github-com-korrel8r-operator-api-v1alpha1-config[$$Config$$]__ | Config is the configuration for a korrel8r deployment. If not provided there is a default configuration suitable for use in an openshift cluster. +
+| *`config`* __xref:{anchor_prefix}-github-com-korrel8r-operator-api-v1alpha1-config[$$Config$$]__ | Config is the configuration for a korrel8r deployment. +
+If not provided there is a default configuration suitable for use in an openshift cluster. +
 
-The "include" section can load additional configuration files provided at /etc/korrel8r
-| *`verbose`* __integer__ | Verbose sets the numeric logging verbosity for the KORREL8R_VERBOSE environment variable.
+
+The "include" section can load additional configuration files provided at /etc/korrel8r +
+| *`verbose`* __integer__ | Verbose sets the numeric logging verbosity for the KORREL8R_VERBOSE environment variable. +
 |===
 
 
