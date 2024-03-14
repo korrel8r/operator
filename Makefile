@@ -43,6 +43,8 @@ ENVTEST_K8S_VERSION = 1.26.0
 SHELL = /usr/bin/env bash -o pipefail
 .SHELLFLAGS = -ec
 
+include .bingo/Variables.mk
+
 ##@ General
 
 all: build test doc bundle  ## All local build & test.
@@ -196,14 +198,12 @@ push-latest: push-all
 .PHONY: doc
 doc: doc/zz_api-ref.adoc
 
-doc/zz_api-ref.adoc: $(shell find api -name '*.go') $(shell find doc/crd-ref-docs) bin/crd-ref-docs
-	bin/crd-ref-docs --source-path api --config doc/crd-ref-docs/config.yaml --templates-dir doc/crd-ref-docs/templates --output-path $@
-
-bin/crd-ref-docs:
-	GOBIN=$(PWD)/bin go install github.com/elastic/crd-ref-docs@latest
+doc/zz_api-ref.adoc: $(shell find api etc/crd-ref-docs) $(CRD_REF_DOCS)
+	$(CRD_REF_DOCS) --source-path api --config etc/crd-ref-docs/config.yaml --templates-dir etc/crd-ref-docs/templates --output-path $@
+GENERATED+=doc/zz_api-ref.adoc
 
 clean:
-	rm -rf bunde bundle.Dockerfile
+	rm -rf bunde bundle.Dockerfile $(GENERATED)
 
 clean-cluster: bundle-cleanup undeploy	## Remove all test artifacts from the cluster.
 	oc delete ns/$(NAMESPACE) || true
