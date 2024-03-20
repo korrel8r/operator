@@ -49,7 +49,8 @@ push-all: all image-push bundle-push ## Build and push all images.
 manifests: $(CONTROLLER_GEN) $(KUSTOMIZE) ## Generate ClusterRole and CustomResourceDefinition objects.
 	cd config/default && $(KUSTOMIZE) edit set image controller=$(IMAGE)
 	cd config/default && $(KUSTOMIZE) edit set namespace $(NAMESPACE)
-	sed -i 's|value:.*|value: $(KORREL8R_IMAGE)|' config/default/manager_image_patch.yaml
+	sed -e 's|value:.*|value: $(KORREL8R_IMAGE)|' config/default/manager_image_patch.yaml > \
+		config/default/manager_image_patch.yaml_bkp && mv config/default/manager_image_patch.yaml_bkp config/default/manager_image_patch.yaml
 	$(CONTROLLER_GEN) rbac:roleName=manager-role crd webhook paths="./..." output:crd:artifacts:config=config/crd/bases
 
 .PHONY: generate
