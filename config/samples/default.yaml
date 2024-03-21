@@ -1,5 +1,0 @@
-apiVersion: korrel8r.openshift.io/v1alpha1
-kind: Korrel8r
-metadata:
-  name: default
-# If there is no spec field, default settings will be added.

@@ -3,12 +3,6 @@ kind: Namespace
 metadata:
   labels:
     control-plane: controller-manager
-    app.kubernetes.io/name: namespace
-    app.kubernetes.io/instance: system
-    app.kubernetes.io/component: manager
-    app.kubernetes.io/created-by: korrel8r
-    app.kubernetes.io/part-of: korrel8r
-    app.kubernetes.io/managed-by: kustomize
   name: system
 ---
 apiVersion: apps/v1
@@ -18,12 +12,6 @@ metadata:
   namespace: system
   labels:
     control-plane: controller-manager
-    app.kubernetes.io/name: deployment
-    app.kubernetes.io/instance: controller-manager
-    app.kubernetes.io/component: manager
-    app.kubernetes.io/created-by: korrel8r
-    app.kubernetes.io/part-of: korrel8r
-    app.kubernetes.io/managed-by: kustomize
 spec:
   selector:
     matchLabels:
@@ -42,7 +30,12 @@ spec:
           type: RuntimeDefault
       containers:
       - command:
-        - /manager
+          - /manager
+        env:
+          - name: KORREL8R_IMAGE
+            value: quay.io/korrel8r/korrel8r
+          - name: HOME      # Prevent "Fontconfig error: No writable cache directories" from graphviz.
+            value: /tmp
         image: controller
         name: manager
         securityContext:

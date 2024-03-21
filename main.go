@@ -4,12 +4,11 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"os"
 	"strconv"
 
-	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
-	// to ensure that exec-entrypoint and run can make use of them.
-	_ "k8s.io/client-go/plugin/pkg/client/auth"
+	_ "k8s.io/client-go/plugin/pkg/client/auth" // Import all Kubernetes client auth plugins.
 
 	"github.com/go-logr/stdr"
 	"github.com/korrel8r/operator/controllers"
@@ -21,27 +20,36 @@ import (
 	//+kubebuilder:scaffold:imports
 )
 
-const verboseEnv = "KORREL8R_VERBOSE"
+func fatalIf(bad bool, format string, args ...any) {
+	if bad {
+		fmt.Fprintf(os.Stderr, format, args...)
+		fmt.Fprintln(os.Stderr)
+		os.Exit(1)
+	}
+}
 
 func main() {
+	// Environment variables
+	defaultVerbose := 0
+	if s := os.Getenv(controllers.VerboseEnv); s != "" {
+		n, err := strconv.Atoi(s)
+		fatalIf(err != nil, "Invalid environment variable: %v=%v", controllers.VerboseEnv, s)
+		defaultVerbose = n
+	}
+	image := os.Getenv(controllers.ImageEnv)
+	fatalIf(image == "", "Missing environment variable: %v", controllers.ImageEnv)
+
+	// Command line flags.
+	verbose := flag.Int("verbose", defaultVerbose, "Logging verbosity")
 	metricsAddr := flag.String("metrics-bind-address", ":9090", "The address the metric endpoint binds to.")
 	probeAddr := flag.String("health-probe-bind-address", ":9091", "The address the probe endpoint binds to.")
-	verbose := flag.Int("verbose", 0, "Logging verbosity")
 	flag.Parse()
-	if env := os.Getenv(verboseEnv); env != "" && *verbose == 0 {
-		*verbose, _ = strconv.Atoi(env)
-	}
 
 	stdr.SetVerbosity(*verbose)
 	log := stdr.New(nil).WithName(controllers.ApplicationName)
 	ctrl.SetLogger(log)
 
-	check := func(err error, msg string) {
-		if err != nil {
-			log.Error(err, msg)
-			os.Exit(1)
-		}
-	}
+	check := func(err error, msg string) { fatalIf(err != nil, "%v, %v", msg, err) }
 
 	scheme := runtime.NewScheme()
 	check(controllers.AddToScheme(scheme), "Cannot add controller types to scheme")
@@ -49,10 +57,13 @@ func main() {
 		Scheme:                 scheme,
 		Metrics:                server.Options{BindAddress: *metricsAddr},
 		HealthProbeBindAddress: *probeAddr,
+		Logger:                 log,
+		Cache:                  controllers.CacheOptions(),
 	})
 	check(err, "Unable to start manager")
 
 	kr := controllers.NewKorrel8rReconciler(
+		image,
 		mgr.GetClient(),
 		mgr.GetScheme(),
 		mgr.GetEventRecorderFor(controllers.ApplicationName))
@@ -60,6 +71,6 @@ func main() {
 	check(mgr.AddHealthzCheck("healthz", healthz.Ping), "Unable to set up health check")
 	check(mgr.AddReadyzCheck("readyz", healthz.Ping), "Unable to set up ready check")
 
-	log.Info("Starting manager")
-	check(mgr.Start(ctrl.SetupSignalHandler()), "Problem running manager")
+	log.Info("Starting controller manager")
+	check(mgr.Start(ctrl.SetupSignalHandler()), "Problem starting manager")
 }

@@ -162,10 +162,15 @@ spec:
                       type: object
                     type: array
                 type: object
-              verbose:
-                description: Verbose sets the numeric logging verbosity for the KORREL8R_VERBOSE
-                  environment variable.
-                type: integer
+              debug:
+                description: Debug provides optional settings intended to help with
+                  debugging problems.
+                properties:
+                  verbose:
+                    description: Verbose sets the numeric logging verbosity for the
+                      KORREL8R_VERBOSE environment variable.
+                    type: integer
+                type: object
             type: object
           status:
             description: Korrel8rStatus defines the observed state of Korrel8r

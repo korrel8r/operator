@@ -12,6 +12,8 @@ import (
 	"strconv"
 	"strings"
 
+	"slices"
+
 	"github.com/go-logr/logr"
 	"github.com/google/go-cmp/cmp"
 	korrel8rv1alpha1 "github.com/korrel8r/operator/api/v1alpha1"
@@ -19,11 +21,11 @@ import (
 	"gopkg.in/yaml.v2"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
@@ -31,6 +33,7 @@ import (
 	"k8s.io/client-go/util/retry"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
+	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/log"
@@ -50,15 +53,11 @@ import (
 //+kubebuilder:rbac:groups=apps,resources=deployments,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=core,resources=pods,verbs=get;list;watch
 //+kubebuilder:rbac:groups=route.openshift.io,resources=routes,verbs=get;list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups=rbac.authorization.k8s.io,resources=roles;rolebindings;clusterroles;clusterrolebindings,verbs=get;list;watch;create;update;patch;delete
 //
-// TODO restrict to read-only access. Restrict for normal users?
-//+kubebuilder:rbac:groups=*,resources=*,verbs=*
 
 const (
 	ApplicationName        = "korrel8r"
 	ComponentName          = "engine"
-	RoleName               = ApplicationName + "-" + ComponentName + "-reader"
 	ConfigKey              = "korrel8r.yaml" // ConfigKey for the root configuration in ConfigMap.Data.
 	ImageEnv               = "KORREL8R_IMAGE"
 	VerboseEnv             = "KORREL8R_VERBOSE"
@@ -66,6 +65,21 @@ const (
 	ConditionTypeDegraded  = "Degraded"
 	ReasonReconciling      = "Reconciling"
 	ReasonReconciled       = "Reconciled"
+
+	// K8s recommended label names
+	App          = "app.kubernetes.io/"
+	AppComponent = App + "component"
+	AppInstance  = App + "instance"
+	AppName      = App + "name"
+	AppVersion   = App + "version"
+)
+
+var (
+	// Static labels applied to all owned objects.
+	CommonLabels = map[string]string{
+		AppName:      ApplicationName,
+		AppComponent: ComponentName,
+	}
 )
 
 // Korrel8rReconciler reconciles a Korrel8r object
@@ -73,34 +87,51 @@ type Korrel8rReconciler struct {
 	client.Client
 	Scheme   *runtime.Scheme
 	Recorder record.EventRecorder
+	image    string
+	version  string
 }
 
-func NewKorrel8rReconciler(c client.Client, s *runtime.Scheme, e record.EventRecorder) *Korrel8rReconciler {
+func NewKorrel8rReconciler(image string, c client.Client, s *runtime.Scheme, e record.EventRecorder) *Korrel8rReconciler {
+	_, version, _ := strings.Cut(image, ":")
 	return &Korrel8rReconciler{
 		Client:   c,
 		Scheme:   s,
 		Recorder: e,
+		image:    image,
+		version:  version,
 	}
 }
 
+// Owned resources created by this operator
+type Owned struct {
+	ConfigMap      corev1.ConfigMap
+	Deployment     appsv1.Deployment
+	Route          routev1.Route
+	Service        corev1.Service
+	ServiceAccount corev1.ServiceAccount
+}
+
+func (o *Owned) each(f func(o client.Object)) {
+	for _, obj := range []client.Object{&o.Deployment, &o.ConfigMap, &o.Service, &o.Route, &o.ServiceAccount} {
+		f(obj)
+	}
+}
+
+// CacheOptions for the controller manager to limit watches objects in the korrel8r app.
+func CacheOptions() cache.Options {
+	byObject := map[client.Object]cache.ByObject{}
+	selector := labels.Selector(labels.SelectorFromSet(labels.Set{AppName: ApplicationName}))
+	new(Owned).each(func(o client.Object) { byObject[o] = cache.ByObject{Label: selector} })
+	return cache.Options{ByObject: byObject}
+}
+
 func (r *Korrel8rReconciler) SetupWithManager(mgr manager.Manager) error {
-	return builder.ControllerManagedBy(mgr).
+	b := builder.ControllerManagedBy(mgr).
 		For(&korrel8rv1alpha1.Korrel8r{}).
-		Owns(&corev1.ConfigMap{}).
-		Owns(&appsv1.Deployment{}). // After configmap, needs configHash
-		Owns(&corev1.Service{}).
-		Owns(&corev1.ServiceAccount{}).
-		Owns(&routev1.Route{}).
-		// Only process updates that modify spec or labels.
 		WithEventFilter(predicate.Or(predicate.GenerationChangedPredicate{}, predicate.LabelChangedPredicate{})).
-		WithLogConstructor(func(rr *reconcile.Request) logr.Logger { // Default is has too many redundant fields.
-			if rr != nil {
-				gvk, _ := r.GroupVersionKindFor(&korrel8rv1alpha1.Korrel8r{})
-				return mgr.GetLogger().WithValues(gvk.Kind, rr.String())
-			}
-			return mgr.GetLogger()
-		}).
-		Complete(r)
+		WithLogConstructor(func(rr *reconcile.Request) logr.Logger { return mgr.GetLogger() })
+	(&Owned{}).each(func(o client.Object) { b.Owns(o) })
+	return b.Complete(r)
 }
 
 // requestContext computed for each call to Reconcile
@@ -110,13 +141,7 @@ type requestContext struct {
 	// Main resource
 	Korrel8r korrel8rv1alpha1.Korrel8r
 	// Owned resources.
-	Deployment         appsv1.Deployment
-	ConfigMap          corev1.ConfigMap
-	Service            corev1.Service
-	ServiceAccount     corev1.ServiceAccount
-	Route              routev1.Route
-	ClusterRole        rbacv1.ClusterRole
-	ClusterRoleBinding rbacv1.ClusterRoleBinding
+	Owned
 
 	// Context
 	ctx context.Context
@@ -124,48 +149,27 @@ type requestContext struct {
 	log logr.Logger
 
 	// Values computed per-reconcile
-	image      string // korrel8r image
-	selector   map[string]string
 	labels     map[string]string
-	configHash string // Computed by configMap, set on deployment.
+	selector   metav1.LabelSelector
+	configHash string // Computed by configMap(), set by deployment().
 }
 
 func (r *Korrel8rReconciler) newRequestContext(ctx context.Context, req reconcile.Request) *requestContext {
-	selector := map[string]string{ // Immutable selector labels
-		"app.kubernetes.io/name":      ApplicationName,
-		"app.kubernetes.io/component": ComponentName,
-		"app.kubernetes.io/instance":  req.Namespace + "." + req.Name, // Use "namespace.name" as unique id
-	}
-	image := os.Getenv(ImageEnv)
-	if image == "" {
-		panic(fmt.Errorf("Environment variable %v must be set", ImageEnv))
-	}
-	_, version, _ := strings.Cut(image, ":")
-	labels := map[string]string{ // Mutable non-selector lables, value may on update.
-		"app.kubernetes.io/version": version,
-	}
-	maps.Copy(labels, selector) // Labels includes selector labels
-
 	rc := &requestContext{
 		Korrel8rReconciler: r,
-
-		ctx: ctx,
-		req: req,
-		log: log.FromContext(ctx),
-
-		image:    image,
-		selector: selector,
-		labels:   labels,
+		ctx:                ctx,
+		req:                req,
+		log:                log.FromContext(ctx),
+		labels:             maps.Clone(CommonLabels),
 	}
-
-	// Set name and namespace for owned resources
-	for _, o := range []client.Object{&rc.ServiceAccount, &rc.ConfigMap, &rc.Deployment, &rc.Service, &rc.Route} {
+	instance := req.Name // Unique name.
+	rc.labels[AppInstance] = instance
+	rc.labels[AppVersion] = rc.version
+	rc.selector.MatchLabels = maps.Clone(rc.labels)
+	rc.Owned.each(func(o client.Object) {
 		o.SetNamespace(req.Namespace)
 		o.SetName(req.Name)
-	}
-	for _, o := range []client.Object{&rc.ClusterRole, &rc.ClusterRoleBinding} {
-		o.SetName(RoleName)
-	}
+	})
 	return rc
 }
 
@@ -173,7 +177,7 @@ func (r *Korrel8rReconciler) newRequestContext(ctx context.Context, req reconcil
 func (r *Korrel8rReconciler) Reconcile(ctx context.Context, req reconcile.Request) (result reconcile.Result, err error) {
 	rc := r.newRequestContext(ctx, req)
 	log := rc.log
-
+	log.V(1).Info("Starting reconcile")
 	// Always log result on return
 	defer func() {
 		if err != nil {
@@ -188,7 +192,7 @@ func (r *Korrel8rReconciler) Reconcile(ctx context.Context, req reconcile.Reques
 			log.Info("Requested resource not found")
 			return result, nil
 		}
-		return result, err
+		return reconcile.Result{}, err
 	}
 
 	korrel8rBefore := rc.Korrel8r.DeepCopy() // Save the initial state.
@@ -213,16 +217,12 @@ func (r *Korrel8rReconciler) Reconcile(ctx context.Context, req reconcile.Reques
 		rc.configMap,
 		rc.deployment,
 		rc.service,
-		rc.clusterRole,
-		rc.clusterRoleBinding,
 		rc.route,
 	} {
-		if errors.Is(err, errReconcileAgain{}) { // Re-start the reconcile.
-			return reconcile.Result{Requeue: true}, nil
-		}
+		// Gather errors from all reconcile functions before returning.
 		err = errors.Join(err, retry.RetryOnConflict(retry.DefaultRetry, f))
 	}
-	return result, errors.Join(err, r.Status().Update(ctx, &rc.Korrel8r))
+	return reconcile.Result{}, errors.Join(err, r.Status().Update(ctx, &rc.Korrel8r))
 }
 
 func conditionFor(err error) metav1.Condition {
@@ -242,42 +242,43 @@ func conditionFor(err error) metav1.Condition {
 	}
 }
 
-// logChange logs OperationResults (updates and creattes) for debugging.
-func (r *requestContext) logChange(op controllerutil.OperationResult, before, after client.Object) {
+func (rc *requestContext) logDiff(before, after any) {
+	if rc.log.V(2).Enabled() { // Dump diff as raw text
+		fmt.Fprintln(os.Stderr, cmp.Diff(before, after))
+	}
+}
+
+// logChange logs OperationResults (updates and creates) for debugging.
+func (rc *requestContext) logChange(op controllerutil.OperationResult, before, after client.Object) {
 	if op != controllerutil.OperationResultNone && !equality.Semantic.DeepEqual(before, after) {
-		gvk, _ := r.Client.GroupVersionKindFor(after)
-		r.log.V(1).Info("Modified by reconcile", "kind", gvk.Kind, "name", after.GetName(), "operation", op)
-		if r.log.V(2).Enabled() { // Dump diff as raw text
-			fmt.Fprintln(os.Stderr, cmp.Diff(before, after))
+		rc.log.V(1).Info("Modified by reconcile", "kind", rc.kindOf(after), "name", after.GetName(), "operation", op)
+		if op != controllerutil.OperationResultCreated {
+			rc.logDiff(before, after)
 		}
 	}
 }
 
 // createOrUpdate wraps controllerutil.CreateOrUpdate to do common setup and error handling/logging.
-func (r *requestContext) createOrUpdate(o client.Object, mutate func() error) error {
+func (rc *requestContext) createOrUpdate(o client.Object, mutate func() error) error {
+	rc.log.V(1).Info("Reconciling resource", "kind", rc.kindOf(o), "name", o.GetName())
 	var before client.Object
-	op, err := controllerutil.CreateOrUpdate(r.ctx, r.Client, o, func() error {
+	op, err := controllerutil.CreateOrUpdate(rc.ctx, rc.Client, o, func() error {
 		before = o.DeepCopyObject().(client.Object)
 		// Common settings for all objects
-		o.SetLabels(r.labels)
-		if o.GetNamespace() == r.Korrel8r.GetNamespace() {
-			utilruntime.Must(controllerutil.SetControllerReference(&r.Korrel8r, o, r.Scheme))
-		}
+		o.SetLabels(rc.labels)
+		utilruntime.Must(controllerutil.SetControllerReference(&rc.Korrel8r, o, rc.Scheme))
 		return mutate()
 	})
-	if err == nil {
-		r.logChange(op, before, o)
-	}
+	rc.logChange(op, before, o)
 	return err
 }
 
-func (r *requestContext) configMap() error {
-	cm := &r.ConfigMap
-	return r.createOrUpdate(cm, func() error {
-		config := r.Korrel8r.Spec.Config
+func (rc *requestContext) configMap() error {
+	cm := &rc.ConfigMap
+	return rc.createOrUpdate(cm, func() error {
+		config := rc.Korrel8r.Spec.Config
 		if config == nil { // Default configuration
 			config = &korrel8rv1alpha1.Config{
-				// FIXME should  Default to openshift-internal configuration with all rules enabled.
 				Include: []string{"/etc/korrel8r/stores/openshift-external.yaml", "/etc/korrel8r/rules/all.yaml"},
 			}
 		}
@@ -291,36 +292,31 @@ func (r *requestContext) configMap() error {
 		// Only reconcile the main config-key entry, allow user to add others.
 		cm.Data[ConfigKey] = string(conf)
 		// Save the config hash for the deployment.
-		r.configHash = fmt.Sprintf("%x", md5.Sum(conf))
+		rc.configHash = fmt.Sprintf("%x", md5.Sum(conf))
 		return nil
 	})
 }
 
-type errReconcileAgain struct{}
-
-func (e errReconcileAgain) Error() string { return "Need to re-run reconciliation." }
-
-func (r *requestContext) deployment() error {
-	d := &r.Deployment
-	return r.createOrUpdate(d, func() error {
-		wantSelector := &metav1.LabelSelector{MatchLabels: r.selector}
-		if d.ObjectMeta.CreationTimestamp.IsZero() { // Selector is immutable, set on create only.
-			d.Spec.Selector = wantSelector
-		}
-		if !equality.Semantic.DeepEqual(d.Spec.Selector, wantSelector) {
-			r.log.Info("Removing deployment with invalid selector", "selector", d.Spec.Selector)
-			if err := r.Delete(r.ctx, d); err != nil {
+func (rc *requestContext) deployment() error {
+	d := &rc.Deployment
+	return rc.createOrUpdate(d, func() error {
+		if d.ObjectMeta.CreationTimestamp.IsZero() { // Creating new deployment
+			d.Spec.Selector = &rc.selector
+		} else if !equality.Semantic.DeepEqual(d.Spec.Selector, &rc.selector) { // Bad selector
+			rc.log.V(1).Info("Re-creating mismatched deployment", "selector", d.Spec.Selector)
+			rc.logDiff(d.Spec.Selector, &rc.selector)
+			if err := rc.Delete(rc.ctx, d); err != nil {
 				return err
 			}
-			return errReconcileAgain{}
+			return fmt.Errorf("Re-creating mismatched deployment: %v", d.Spec.Selector)
 		}
 		d.Spec.Template = corev1.PodTemplateSpec{
-			ObjectMeta: metav1.ObjectMeta{Labels: r.labels},
+			ObjectMeta: metav1.ObjectMeta{Labels: rc.labels},
 			Spec: corev1.PodSpec{
 				Containers: []corev1.Container{
 					{
 						Name:    ApplicationName,
-						Image:   r.image,
+						Image:   rc.image,
 						Command: []string{"korrel8r", "web", "--https", ":8443", "--cert", "/secrets/tls.crt", "--key", "/secrets/tls.key", "--config", "/config/korrel8r.yaml"},
 						VolumeMounts: []corev1.VolumeMount{
 							{
@@ -349,34 +345,41 @@ func (r *requestContext) deployment() error {
 						},
 					},
 				},
-				ServiceAccountName: r.Korrel8r.Name,
+				ServiceAccountName: rc.ServiceAccount.Name,
 				Volumes: []corev1.Volume{
 					{
 						Name: "config",
 						VolumeSource: corev1.VolumeSource{
 							ConfigMap: &corev1.ConfigMapVolumeSource{
-								LocalObjectReference: corev1.LocalObjectReference{Name: r.Korrel8r.Name},
+								LocalObjectReference: corev1.LocalObjectReference{Name: rc.ConfigMap.Name},
 							}},
 					},
 					{
 						Name:         "secrets",
-						VolumeSource: corev1.VolumeSource{Secret: &corev1.SecretVolumeSource{SecretName: r.Korrel8r.Name}},
+						VolumeSource: corev1.VolumeSource{Secret: &corev1.SecretVolumeSource{SecretName: rc.Korrel8r.Name}},
 					},
 				},
 			},
 		}
 		env := &d.Spec.Template.Spec.Containers[0].Env
-		if r.configHash != "" {
-			*env = append(*env, corev1.EnvVar{Name: "CONFIG_HASH", Value: r.configHash}) // To force update if configmap changes.
+		if rc.configHash == "" {
+			panic(errors.New("logic error: configHash is emptpy, deployment() called before configmap()"))
 		}
-		if r.Korrel8r.Spec.Verbose > 0 { //  Set KORREL8R_VERBOSE environment variable
-			*env = append(*env, corev1.EnvVar{Name: VerboseEnv, Value: strconv.Itoa(r.Korrel8r.Spec.Verbose)})
-		}
-		if r.Korrel8r.Spec.Verbose >= 3 { // Always pull images if verbose is set for debugging
-			d.Spec.Template.Spec.Containers[0].ImagePullPolicy = corev1.PullAlways
+		*env = setEnv(*env, "CONFIG_HASH", rc.configHash) // To force update if configmap changes.
+		if rc.Korrel8r.Spec.Debug != nil {
+			*env = setEnv(*env, VerboseEnv, strconv.Itoa(rc.Korrel8r.Spec.Debug.Verbose))
 		}
 		return nil
 	})
+}
+
+func setEnv(env []corev1.EnvVar, name, value string) []corev1.EnvVar {
+	i := slices.IndexFunc(env, func(ev corev1.EnvVar) bool { return ev.Name == name })
+	if i < 0 {
+		return append(env, corev1.EnvVar{Name: name, Value: value})
+	}
+	env[i].Value = value
+	return env
 }
 
 func (r *requestContext) service() error {
@@ -388,7 +391,7 @@ func (r *requestContext) service() error {
 			"service.beta.openshift.io/serving-cert-secret-name": r.Korrel8r.Name,
 		}
 		s.Spec = corev1.ServiceSpec{
-			Selector: r.selector,
+			Selector: r.selector.MatchLabels,
 			Ports: []corev1.ServicePort{
 				{
 					Name:       "web",
@@ -422,47 +425,10 @@ func (r *requestContext) route() error {
 
 func (r *requestContext) serviceAccount() error {
 	sa := &r.ServiceAccount
-	return r.createOrUpdate(sa, func() error {
-		return nil
-	})
+	return r.createOrUpdate(sa, func() error { return nil })
 }
 
-func (r *requestContext) clusterRole() error {
-	role := &r.ClusterRole
-	return r.createOrUpdate(role, func() error {
-		// Read-only access to everything
-		// TODO This needs review for release, allow more restricted options?
-		role.Rules = []rbacv1.PolicyRule{
-			{
-				APIGroups: []string{"*"},
-				Resources: []string{"*"},
-				Verbs:     []string{"get", "watch", "list"},
-			},
-		}
-		return nil
-	})
+func (r *Korrel8rReconciler) kindOf(o client.Object) string {
+	gvk, _ := r.Client.GroupVersionKindFor(o)
+	return gvk.Kind
 }
-
-func (r *requestContext) clusterRoleBinding() error {
-	binding := &r.ClusterRoleBinding
-	return r.createOrUpdate(binding, func() error {
-		binding.RoleRef = rbacv1.RoleRef{
-			APIGroup: rbacv1.SchemeGroupVersion.Group,
-			Kind:     "ClusterRole",
-			Name:     "cluster-admin",
-		}
-		binding.Subjects = []rbacv1.Subject{
-			{
-				Kind:      rbacv1.ServiceAccountKind,
-				Name:      r.Korrel8r.Name,
-				Namespace: r.Korrel8r.Namespace,
-			},
-		}
-		return nil
-	})
-}
-
-// TODO Lifecycle of clusterrole and clusterrolebinding:
-// - remove subject from CRB when Korrel8r instance is deleted.
-// - no need to remove role/binding when all are deleted?
-// Note this is thet same problem as CLO. Should korrel8r be a cluster-scoped operator?

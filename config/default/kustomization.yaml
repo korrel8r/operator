@@ -13,7 +13,14 @@ labels:
 - includeSelectors: true
   pairs:
     app.kubernetes.io/name: korrel8r
+- pairs:
+    app.kubernetes.io/component: operator
 
 patches:
 - path: manager_auth_proxy_patch.yaml
 - path: manager_image_patch.yaml
+
+images:
+- name: controller
+  newName: quay.io/korrel8r/operator
+  newTag: 0.1.0

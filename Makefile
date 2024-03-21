@@ -6,7 +6,7 @@ help: ## Display this help.
 	@grep -E '^## [A-Z0-9_]+: ' Makefile | sed 's/^## \([A-Z0-9_]*\): \(.*\)/\1#\2/' | column -s'#' -t
 
 ## VERSION: Semantic version for release. Use a -dev[N] suffix for work in progress.
-VERSION?=0.1.0-dev
+VERSION?=0.1.0
 ## IMG: Base name of image to build or deploy, without version tag.
 IMG?=quay.io/korrel8r/operator
 ## KORREL8R_IMAGE: Operand image containing the korrel8r executable.
@@ -30,9 +30,6 @@ BUNDLE_METADATA_OPTS ?= $(BUNDLE_CHANNELS) $(BUNDLE_DEFAULT_CHANNEL)
 # BUNDLE_IMAGE defines the image:tag used for the bundle.
 BUNDLE_IMAGE ?= $(IMG)-bundle:$(VERSION)
 
-# BUNDLE_GEN_FLAGS are the flags passed to the operator-sdk generate bundle command
-BUNDLE_GEN_FLAGS ?= -q --overwrite --version $(VERSION) $(BUNDLE_METADATA_OPTS)
-
 # Setting SHELL to bash allows bash commands to be executed by recipes.
 # Options are set to exit when a recipe line exits non-zero or a piped command fails.
 SHELL = /usr/bin/env bash -o pipefail
@@ -49,8 +46,8 @@ push-all: all image-push bundle-push ## Build and push all images.
 ##@ Development
 
 .PHONY: manifests
-manifests: $(MAKEFILES) $(CONTROLLER_GEN) $(KUSTOMIZE) ## Generate WebhookConfiguration, ClusterRole and CustomResourceDefinition objects.
-	cd config/manager && $(KUSTOMIZE) edit set image controller=$(IMAGE)
+manifests: $(CONTROLLER_GEN) $(KUSTOMIZE) ## Generate ClusterRole and CustomResourceDefinition objects.
+	cd config/default && $(KUSTOMIZE) edit set image controller=$(IMAGE)
 	cd config/default && $(KUSTOMIZE) edit set namespace $(NAMESPACE)
 	sed -i 's|value:.*|value: $(KORREL8R_IMAGE)|' config/default/manager_image_patch.yaml
 	$(CONTROLLER_GEN) rbac:roleName=manager-role crd webhook paths="./..." output:crd:artifacts:config=config/crd/bases
@@ -76,7 +73,9 @@ test: manifests generate lint $(SETUP_ENVTEST) ## Run tests.
 build: go.mod manifests generate lint ## Build manager binary.
 	go build -o bin/manager main.go
 
-run: go.mod manifests generate lint install ## Run a controller from your host.
+run: go.mod manifests generate lint install ## Build and run a controller from your host
+	cd config/overlays/rbac_for_test && $(KUSTOMIZE) edit set namespace $(NAMESPACE)
+	$(KUSTOMIZE) build config/overlays/rbac_for_test | kubectl apply -f -
 	KORREL8R_IMAGE=$(KORREL8R_IMAGE) go run main.go
 
 image-build:  ## Build the manager image.
@@ -88,6 +87,7 @@ image-push: image-build ## Push the manager image.
 
 .PHONY: install
 install: manifests ## Install CRDs into the K8s cluster specified in ~/.kube/config.
+	oc create ns $(NAMESPACE) || true
 	$(KUSTOMIZE) build config/crd | kubectl apply -f -
 
 .PHONY: uninstall
@@ -95,7 +95,7 @@ uninstall: manifests ## Uninstall CRDs from the K8s cluster specified in ~/.kube
 	$(KUSTOMIZE) build config/crd | kubectl delete --ignore-not-found -f -
 
 .PHONY: deploy
-deploy: install manifests image-push ## Deploy controller to the K8s cluster specified in ~/.kube/config.
+deploy: install image-push ## Deploy controller to the K8s cluster specified in ~/.kube/config.
 	$(KUSTOMIZE) build config/default | kubectl apply -f -
 
 .PHONY: undeploy
@@ -106,7 +106,7 @@ undeploy: $(KUSTOMIZE) ## Undeploy controller from the K8s cluster specified in 
 
 bundle: manifests $(OPERATOR_SDK) ## Generate bundle manifests and metadata, then validate generated files.
 	$(OPERATOR_SDK) generate kustomize manifests -q
-	$(KUSTOMIZE) build config/manifests | $(OPERATOR_SDK) generate bundle $(BUNDLE_GEN_FLAGS)
+	$(KUSTOMIZE) build config/manifests | $(OPERATOR_SDK) generate bundle -q --overwrite --version $(VERSION) $(BUNDLE_METADATA_OPTS) --extra-service-accounts korrel8r-instance
 	$(OPERATOR_SDK) bundle validate ./bundle
 	touch $@
 
@@ -138,17 +138,24 @@ doc/zz_api-ref.adoc: $(shell find api etc/crd-ref-docs) $(CRD_REF_DOCS)
 GENERATED+=doc/zz_api-ref.adoc
 
 clean:
-	rm -rf bunde bundle.Dockerfile $(GENERATED)
+	rm -rf bundle bundle.Dockerfile $(GENERATED)
 
 clean-cluster: bundle-cleanup undeploy	## Remove all test artifacts from the cluster.
 	oc delete ns/$(NAMESPACE) || true
 	oc get -o name operator | grep korrel8r | xargs -r oc delete || true
+	oc delete -l app.kubernetes.io/name=korrel8r clusterrolebinding,clusterrole || true
+
+
 
 test-deploy: clean-cluster deploy ## Deploy via kustoize and run a smoke-test
 	hack/smoketest.sh
 
 test-bundle: clean-cluster bundle-run  ## Run the bundle and run a smoke-test
 	hack/smoketest.sh
+
+instance: install		## Create the korrel8r instance
+	$(KUSTOMIZE) build config/samples | kubectl -n $(NAMESPACE) apply -f -
+	$(WATCH) kubectl wait -n $(NAMESPACE) --for=condition=available --timeout=60s deployment.apps/korrel8r-instance
 
 OPHUB?=$(error Set OPHUB to the path to your local community-operators-prod clone)
 OPHUB_VERSION=$(OPHUB)/operators/korrel8r/$(VERSION)

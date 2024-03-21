@@ -18,6 +18,11 @@ type Korrel8rSpec struct {
 	// The "include" section can load additional configuration files provided at /etc/korrel8r
 	Config *Config `json:"config,omitempty"`
 
+	// Debug provides optional settings intended to help with debugging problems.
+	Debug *DebugSpec `json:"debug,omitempty"`
+}
+
+type DebugSpec struct {
 	// Verbose sets the numeric logging verbosity for the KORREL8R_VERBOSE environment variable.
 	Verbose int `json:"verbose,omitempty"`
 }

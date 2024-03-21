@@ -17,7 +17,6 @@ import (
 	"gopkg.in/yaml.v2"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -26,27 +25,31 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
-const Korrel8rName = "test-korrel8r"
+const (
+	name  = "test-korrel8r"
+	image = "github.com/korrel8r/korrel8r:1.2.3"
+)
+
+var eventuallyArgs = []any{time.Second, time.Second / 10} // Timeout for all Eventually() tests
 
 var _ = Describe("Korrel8r controller", func() {
 	Context("Korrel8r controller test", func() {
 		ctx := logr.NewContext(context.Background(), stdr.New(nil))
 
-		namespace := &corev1.Namespace{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      Korrel8rName,
-				Namespace: Korrel8rName,
-			},
-		}
-
-		nsName := types.NamespacedName{Name: Korrel8rName, Namespace: Korrel8rName}
+		var (
+			namespace *corev1.Namespace
+			nsName    types.NamespacedName
+		)
 
 		BeforeEach(func() {
+			namespace = &corev1.Namespace{
+				ObjectMeta: metav1.ObjectMeta{GenerateName: name},
+			}
 			By("Creating the Namespace to perform the tests: " + namespace.Name)
 			err := k8sClient.Create(ctx, namespace)
 			Expect(err).To(Not(HaveOccurred()))
-			err = os.Setenv(ImageEnv, "github.com/korrel8r/korrel8r:latest")
 			Expect(err).To(Not(HaveOccurred()))
+			nsName = types.NamespacedName{Name: name, Namespace: namespace.Name}
 		})
 
 		AfterEach(func() {
@@ -58,7 +61,7 @@ var _ = Describe("Korrel8r controller", func() {
 			_ = os.Unsetenv(ImageEnv)
 		})
 
-		It("should successfully reconcile a custom resource for Korrel8r", func() {
+		It("should successfully reconcile a custom configuration for Korrel8r", func() {
 			By("Creating the custom resource for the Kind Korrel8r")
 			korrel8r := &korrel8rv1alpha1.Korrel8r{}
 			korrel8rYAML := `
@@ -83,11 +86,10 @@ spec:
 			Expect(k8sClient.Create(ctx, korrel8r)).To(Succeed())
 
 			gvk := schema.FromAPIVersionAndKind(korrel8rv1alpha1.GroupVersion.String(), reflect.TypeOf(korrel8r).Elem().Name())
-			ownerRef := *metav1.NewControllerRef(korrel8r, gvk)    // Expected owner ref
-			eventuallyArgs := []any{time.Second, time.Second / 10} // Timeout for all Eventually() tests
+			ownerRef := *metav1.NewControllerRef(korrel8r, gvk) // Expected owner ref
 
 			By("Reconciling the custom resource created")
-			korrel8rReconciler := NewKorrel8rReconciler(k8sClient, k8sClient.Scheme(), record.NewFakeRecorder(1000))
+			korrel8rReconciler := NewKorrel8rReconciler(image, k8sClient, k8sClient.Scheme(), record.NewFakeRecorder(1000))
 			result, err := korrel8rReconciler.Reconcile(ctx, reconcile.Request{NamespacedName: nsName})
 			Expect(err).NotTo(HaveOccurred())
 			Expect(result).To(BeZero())
@@ -104,13 +106,19 @@ spec:
 				Expect(found.Data).To(Equal(map[string]string{ConfigKey: string(config)}))
 			}
 
-			var labels map[string]string
+			var selector map[string]string
 			{
 				By("Checking if Deployment was successfully created in the reconciliation")
 				found := &appsv1.Deployment{}
 				Eventually(func() error { return k8sClient.Get(ctx, nsName, found) }, eventuallyArgs...).Should(Succeed())
 				Expect(found.GetOwnerReferences()).To(ContainElement(ownerRef))
-				labels = found.Spec.Selector.MatchLabels
+				selector = found.Spec.Selector.MatchLabels
+				Expect(selector).To(Equal(map[string]string{
+					"app.kubernetes.io/version":   "1.2.3",
+					"app.kubernetes.io/component": "engine",
+					"app.kubernetes.io/instance":  "test-korrel8r",
+					"app.kubernetes.io/name":      "korrel8r",
+				}))
 			}
 
 			{
@@ -118,7 +126,7 @@ spec:
 				found := &corev1.Service{}
 				Eventually(func() error { return k8sClient.Get(ctx, nsName, found) }, eventuallyArgs...).Should(Succeed())
 				Expect(found.GetOwnerReferences()).To(ContainElement(ownerRef))
-				Expect(found.Spec.Selector).To(Equal(labels), "service and deployment labels don't match")
+				Expect(found.Spec.Selector).To(Equal(selector), "service and deployment labels don't match")
 			}
 
 			{
@@ -126,28 +134,9 @@ spec:
 				found := &corev1.Service{}
 				Eventually(func() error { return k8sClient.Get(ctx, nsName, found) }, eventuallyArgs...).Should(Succeed())
 				Expect(found.GetOwnerReferences()).To(ContainElement(ownerRef))
-				Expect(found.Spec.Selector).To(Equal(labels), "service and deployment labels don't match")
+				Expect(found.Spec.Selector).To(Equal(selector), "service and deployment labels don't match")
 			}
 
-			{
-				By("Checking if ServiceAccount was successfully created in the reconciliation")
-				found := &corev1.ServiceAccount{}
-				Eventually(func() error { return k8sClient.Get(ctx, nsName, found) }, eventuallyArgs...).Should(Succeed())
-				Expect(found.GetOwnerReferences()).To(ContainElement(ownerRef))
-			}
-
-			roleNN := types.NamespacedName{Name: RoleName}
-			{
-				By("Checking if ClusterRoleBinding was successfully created in the reconciliation")
-				found := &rbacv1.ClusterRoleBinding{}
-				Eventually(func() error { return k8sClient.Get(ctx, roleNN, found) }, eventuallyArgs...).Should(Succeed())
-				subject := rbacv1.Subject{
-					Kind:      "ServiceAccount",
-					Name:      Korrel8rName,
-					Namespace: Korrel8rName,
-				}
-				Expect(found.Subjects).To(Equal([]rbacv1.Subject{subject}))
-			}
 			{
 				By("Checking Status Condition added to the Korrel8r instance")
 				found := &korrel8rv1alpha1.Korrel8r{}
@@ -186,6 +175,31 @@ spec:
 				Expect(found.GetOwnerReferences()).To(ContainElement(ownerRef))
 				//				Expect(found.Spec.To).To(Equal(nil), "route target doesn't match")
 			}
+		})
+
+		Context("Korrel8r resource debug section", func() {
+			It("applies debug settings", func() {
+				korrel8r := &korrel8rv1alpha1.Korrel8r{}
+				korrel8rYAML := `
+kind: Korrel8r
+apiVersion: korrel8r.openshift.io/v1alpha1
+spec:
+  debug:
+    verbose: 3
+`
+				Expect(yaml.Unmarshal([]byte(korrel8rYAML), korrel8r)).To(Succeed())
+				korrel8r.SetName(nsName.Name)
+				korrel8r.SetNamespace(nsName.Namespace)
+				Expect(k8sClient.Create(ctx, korrel8r)).To(Succeed())
+				korrel8rReconciler := NewKorrel8rReconciler(ImageEnv, k8sClient, k8sClient.Scheme(), record.NewFakeRecorder(1000))
+				result, err := korrel8rReconciler.Reconcile(ctx, reconcile.Request{NamespacedName: nsName})
+				Expect(err).NotTo(HaveOccurred())
+				Expect(result).To(BeZero())
+
+				found := &appsv1.Deployment{}
+				Eventually(func() error { return k8sClient.Get(ctx, nsName, found) }, eventuallyArgs...).Should(Succeed())
+				Expect(found.Spec.Template.Spec.Containers[0].Env).To(ContainElement(corev1.EnvVar{Name: "KORREL8R_VERBOSE", Value: "3"}))
+			})
 		})
 	})
 })

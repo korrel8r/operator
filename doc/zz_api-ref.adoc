@@ -37,6 +37,21 @@ Config wraps the korrel8r Config struct for API code generation.
 |===
 
 
+[id="{anchor_prefix}-github-com-korrel8r-operator-api-v1alpha1-debugspec"]
+==== DebugSpec
+
+
+
+.Appears In:
+- xref:{anchor_prefix}-github-com-korrel8r-operator-api-v1alpha1-korrel8rspec[$$Korrel8rSpec$$]
+
+[cols="25a,75a", options="header"]
+|===
+| Field | Description
+| *`verbose`* __integer__ | Verbose sets the numeric logging verbosity for the KORREL8R_VERBOSE environment variable. +
+|===
+
+
 [id="{anchor_prefix}-github-com-korrel8r-operator-api-v1alpha1-korrel8r"]
 ==== Korrel8r
 
@@ -71,7 +86,7 @@ If not provided there is a default configuration suitable for use in an openshif
 
 
 The "include" section can load additional configuration files provided at /etc/korrel8r +
-| *`verbose`* __integer__ | Verbose sets the numeric logging verbosity for the KORREL8R_VERBOSE environment variable. +
+| *`debug`* __xref:{anchor_prefix}-github-com-korrel8r-operator-api-v1alpha1-debugspec[$$DebugSpec$$]__ | Debug provides optional settings intended to help with debugging problems. +
 |===
 
 
