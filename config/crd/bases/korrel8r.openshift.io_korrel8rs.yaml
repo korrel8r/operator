@@ -48,12 +48,12 @@ spec:
 
                   The "include" section can load additional configuration files provided at /etc/korrel8r
                 properties:
-                  groups:
-                    description: Groups defines short names for groups of related
+                  aliases:
+                    description: Aliases defines short names for groups of related
                       classes.
                     items:
-                      description: Group of similar classes that can be referred to
-                        by a short name in a ClassSpec.
+                      description: Class defines a shortcut name for a set of existing
+                        classes.
                       properties:
                         classes:
                           description: Classes are the names of classes in this group.
@@ -115,12 +115,6 @@ spec:
                             Each template is applied to an object from one of the `start` classes.
                             If any template yields a blank string or an error, the rule does not apply.
                           properties:
-                            constraint:
-                              description: |-
-                                Constraint template is optional, it generates a korrel8r.Constraint in JSON form.
-                                This constraint is combined with the constraint already in force, if there is one.
-                                See Constraint.Combine
-                              type: string
                             query:
                               description: Query template generates a query object
                                 suitable for the goal store.

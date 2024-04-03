@@ -23,9 +23,9 @@ func (in *Config) DeepCopyInto(out *Config) {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
-	if in.Groups != nil {
-		in, out := &in.Groups, &out.Groups
-		*out = make([]config.Group, len(*in))
+	if in.Aliases != nil {
+		in, out := &in.Aliases, &out.Aliases
+		*out = make([]config.Class, len(*in))
 		for i := range *in {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}

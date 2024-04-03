@@ -2,7 +2,7 @@
 :anchor_prefix: k8s-api
 
 [id="{p}-api-reference"]
-== API Reference
+== Custom Resource API Reference
 
 .Packages
 - xref:{anchor_prefix}-korrel8r-openshift-io-v1alpha1[$$korrel8r.openshift.io/v1alpha1$$]
@@ -31,7 +31,7 @@ Config wraps the korrel8r Config struct for API code generation.
 |===
 | Field | Description
 | *`rules`* __xref:{anchor_prefix}-github-com-korrel8r-korrel8r-pkg-config-rule[$$Rule$$] array__ | Rules define the relationships that korrel8r will follow. +
-| *`groups`* __xref:{anchor_prefix}-github-com-korrel8r-korrel8r-pkg-config-group[$$Group$$] array__ | Groups defines short names for groups of related classes. +
+| *`aliases`* __xref:{anchor_prefix}-github-com-korrel8r-korrel8r-pkg-config-class[$$Class$$] array__ | Aliases defines short names for groups of related classes. +
 | *`stores`* __StoreConfig array__ | Stores is a list of store configurations. +
 | *`include`* __string array__ | Include lists additional configuration files or URLs to include. +
 |===

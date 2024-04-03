@@ -6,7 +6,7 @@ help: ## Display this help.
 	@grep -E '^## [A-Z0-9_]+: ' Makefile | sed 's/^## \([A-Z0-9_]*\): \(.*\)/\1#\2/' | column -s'#' -t
 
 ## VERSION: Semantic version for release. Use a -dev[N] suffix for work in progress.
-VERSION?=0.1.0
+VERSION?=0.1.1-dev
 ## IMG: Base name of image to build or deploy, without version tag.
 IMG?=quay.io/korrel8r/operator
 ## KORREL8R_IMAGE: Operand image containing the korrel8r executable.
@@ -56,24 +56,22 @@ manifests: $(CONTROLLER_GEN) $(KUSTOMIZE) ## Generate ClusterRole and CustomReso
 generate: $(CONTROLLER_GEN) ## Generate code containing DeepCopy, DeepCopyInto, and DeepCopyObject methods.
 	$(CONTROLLER_GEN) object:headerFile="hack/boilerplate.go.txt" paths="./..."
 
-go.mod: $(find -name *.go)
-	go mod tidy
-
 .PHONY: lint
 lint: $(GOLANGCI_LINT) ## Run the linter to find and fix code style problems.
+	go mod tidy
 	$(GOLANGCI_LINT) run --fix
 
 .PHONY: test
 test: manifests generate lint $(SETUP_ENVTEST) ## Run tests.
-	$(shell $(SETUP_ENVTEST) use $(ENVTEST_K8S_VERSION) -p env); go test ./... -coverprofile cover.out
+	$(shell $(SETUP_ENVTEST) use $(ENVTEST_K8S_VERSION) -p env); go test ./...
 
 ##@ Build
 
 .PHONY: build
-build: go.mod manifests generate lint ## Build manager binary.
+build: manifests generate lint ## Build manager binary.
 	go build -o bin/manager main.go
 
-run: go.mod manifests generate lint install ## Build and run a controller from your host
+run: manifests generate lint install ## Build and run a controller from your host
 	cd config/overlays/rbac_for_test && $(KUSTOMIZE) edit set namespace $(NAMESPACE)
 	$(KUSTOMIZE) build config/overlays/rbac_for_test | kubectl apply -f -
 	KORREL8R_IMAGE=$(KORREL8R_IMAGE) go run main.go
@@ -127,8 +125,8 @@ bundle-cleanup: $(OPERATOR_SDK)
 push-all: image-push bundle-push
 
 push-latest: push-all
-	docker push $(IMAGE) $(IMG):latest
-	docker push $(BUNDLE_IMAGE) $(IMG)-bundle:latest
+	$(IMGTOOL) push $(IMAGE) $(IMG):latest
+	$(IMGTOOL) push $(BUNDLE_IMAGE) $(IMG)-bundle:latest
 
 .PHONY: doc
 doc: doc/zz_api-ref.adoc
@@ -138,7 +136,7 @@ doc/zz_api-ref.adoc: $(shell find api etc/crd-ref-docs) $(CRD_REF_DOCS)
 GENERATED+=doc/zz_api-ref.adoc
 
 clean:
-	rm -rf bundle bundle.Dockerfile $(GENERATED)
+	rm -rf bundle bundle.Dockerfile $(GENERATED) $(shell find -name zz_generated.*)
 
 clean-cluster: bundle-cleanup undeploy	## Remove all test artifacts from the cluster.
 	oc delete ns/$(NAMESPACE) || true
@@ -163,3 +161,7 @@ operatorhub: bundle		## Generate modified bundle manifest for operator hub.
 	mkdir -p $(OPHUB_VERSION)
 	cp -aT bundle $(OPHUB_VERSION)
 	echo -e '\n  # Annotations for OperatorHub\n  com.redhat.openshift.versions: "v4.10"' >> $(OPHUB_VERSION)/metadata/annotations.yaml
+
+tag-release:
+	hack/tag-release.sh $(VERSION)
+	$(MAKE) push-latest

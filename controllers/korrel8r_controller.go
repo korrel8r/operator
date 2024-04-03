@@ -177,35 +177,29 @@ func (r *Korrel8rReconciler) newRequestContext(ctx context.Context, req reconcil
 func (r *Korrel8rReconciler) Reconcile(ctx context.Context, req reconcile.Request) (result reconcile.Result, err error) {
 	rc := r.newRequestContext(ctx, req)
 	log := rc.log
-	log.V(1).Info("Starting reconcile")
-	// Always log result on return
-	defer func() {
-		if err != nil {
-			log.Error(err, "Reconcile error", "requeue", !result.IsZero())
-		} else {
-			log.Info("Reconcile succeeded", "requeue", !result.IsZero())
-		}
-	}()
+	log.Info("Reconcile begin")
+	defer func() { log.Info("Reconcile end", "result", result, "error", err) }()
 
 	if err = r.Get(ctx, req.NamespacedName, &rc.Korrel8r); err != nil {
 		if apierrors.IsNotFound(err) {
 			log.Info("Requested resource not found")
-			return result, nil
+			return reconcile.Result{}, nil
 		}
 		return reconcile.Result{}, err
 	}
-
 	korrel8rBefore := rc.Korrel8r.DeepCopy() // Save the initial state.
 
 	// Update status condition on return.
 	defer func() {
 		cond := conditionFor(err)
 		if meta.SetStatusCondition(&rc.Korrel8r.Status.Conditions, cond) { // Condition changed
-			err = errors.Join(err, r.Status().Update(ctx, &rc.Korrel8r))
+			log.Info("Updating status", "reason", cond.Reason, "message", cond.Message)
+			if err2 := r.Status().Update(ctx, &rc.Korrel8r); err2 != nil {
+				log.Error(err2, "Status update failed")
+				err = err2
+			}
 			if err != nil {
-				r.Recorder.Eventf(&rc.Korrel8r, corev1.EventTypeWarning, ReasonReconciling, "Reconcile error: %v", err)
-			} else {
-				r.Recorder.Eventf(&rc.Korrel8r, corev1.EventTypeNormal, ReasonReconciled, "Reconcile succeeded")
+				r.Recorder.Event(&rc.Korrel8r, corev1.EventTypeWarning, cond.Reason, err.Error())
 			}
 		}
 		rc.logChange(controllerutil.OperationResultUpdated, korrel8rBefore, &rc.Korrel8r)
@@ -219,10 +213,11 @@ func (r *Korrel8rReconciler) Reconcile(ctx context.Context, req reconcile.Reques
 		rc.service,
 		rc.route,
 	} {
-		// Gather errors from all reconcile functions before returning.
-		err = errors.Join(err, retry.RetryOnConflict(retry.DefaultRetry, f))
+		if err := retry.RetryOnConflict(retry.DefaultRetry, f); err != nil {
+			return reconcile.Result{}, err
+		}
 	}
-	return reconcile.Result{}, errors.Join(err, r.Status().Update(ctx, &rc.Korrel8r))
+	return reconcile.Result{}, nil
 }
 
 func conditionFor(err error) metav1.Condition {
@@ -251,7 +246,7 @@ func (rc *requestContext) logDiff(before, after any) {
 // logChange logs OperationResults (updates and creates) for debugging.
 func (rc *requestContext) logChange(op controllerutil.OperationResult, before, after client.Object) {
 	if op != controllerutil.OperationResultNone && !equality.Semantic.DeepEqual(before, after) {
-		rc.log.V(1).Info("Modified by reconcile", "kind", rc.kindOf(after), "name", after.GetName(), "operation", op)
+		rc.log.V(1).Info("Modified", "kind", rc.kindOf(after), "name", after.GetName(), "operation", op)
 		if op != controllerutil.OperationResultCreated {
 			rc.logDiff(before, after)
 		}
@@ -260,7 +255,6 @@ func (rc *requestContext) logChange(op controllerutil.OperationResult, before, a
 
 // createOrUpdate wraps controllerutil.CreateOrUpdate to do common setup and error handling/logging.
 func (rc *requestContext) createOrUpdate(o client.Object, mutate func() error) error {
-	rc.log.V(1).Info("Reconciling resource", "kind", rc.kindOf(o), "name", o.GetName())
 	var before client.Object
 	op, err := controllerutil.CreateOrUpdate(rc.ctx, rc.Client, o, func() error {
 		before = o.DeepCopyObject().(client.Object)
@@ -300,16 +294,14 @@ func (rc *requestContext) configMap() error {
 func (rc *requestContext) deployment() error {
 	d := &rc.Deployment
 	return rc.createOrUpdate(d, func() error {
-		if d.ObjectMeta.CreationTimestamp.IsZero() { // Creating new deployment
-			d.Spec.Selector = &rc.selector
-		} else if !equality.Semantic.DeepEqual(d.Spec.Selector, &rc.selector) { // Bad selector
-			rc.log.V(1).Info("Re-creating mismatched deployment", "selector", d.Spec.Selector)
-			rc.logDiff(d.Spec.Selector, &rc.selector)
+		if !d.ObjectMeta.CreationTimestamp.IsZero() && // Existing deployment
+			!equality.Semantic.DeepEqual(d.Spec.Selector, &rc.selector) { // Wrong selector
 			if err := rc.Delete(rc.ctx, d); err != nil {
 				return err
 			}
-			return fmt.Errorf("Re-creating mismatched deployment: %v", d.Spec.Selector)
+			return fmt.Errorf("Deployment has wrong selector: %v", d.Spec.Selector.MatchLabels)
 		}
+		d.Spec.Selector = &rc.selector
 		d.Spec.Template = corev1.PodTemplateSpec{
 			ObjectMeta: metav1.ObjectMeta{Labels: rc.labels},
 			Spec: corev1.PodSpec{
@@ -356,7 +348,7 @@ func (rc *requestContext) deployment() error {
 					},
 					{
 						Name:         "secrets",
-						VolumeSource: corev1.VolumeSource{Secret: &corev1.SecretVolumeSource{SecretName: rc.Korrel8r.Name}},
+						VolumeSource: corev1.VolumeSource{Secret: &corev1.SecretVolumeSource{SecretName: rc.req.Name}},
 					},
 				},
 			},
@@ -388,7 +380,7 @@ func (r *requestContext) service() error {
 		port := intstr.FromInt(8443)
 		s.ObjectMeta.Annotations = map[string]string{
 			// Generate a TLS server certificate in a secret
-			"service.beta.openshift.io/serving-cert-secret-name": r.Korrel8r.Name,
+			"service.beta.openshift.io/serving-cert-secret-name": r.req.Name,
 		}
 		s.Spec = corev1.ServiceSpec{
 			Selector: r.selector.MatchLabels,
@@ -405,19 +397,19 @@ func (r *requestContext) service() error {
 	})
 }
 
-func (r *requestContext) route() error {
-	route := &r.Route
-	err := r.createOrUpdate(route, func() error {
+func (rc *requestContext) route() error {
+	route := &rc.Route
+	err := rc.createOrUpdate(route, func() error {
 		route.Spec.TLS = &routev1.TLSConfig{Termination: routev1.TLSTerminationPassthrough}
 		route.Spec.To = routev1.RouteTargetReference{
 			Kind: "Service",
-			Name: r.Korrel8r.Name,
+			Name: rc.req.Name,
 		}
 		return nil
 	})
 	if meta.IsNoMatchError(err) { // Route is optional, no error if unavailable.
-		gvk, _ := r.Client.GroupVersionKindFor(route)
-		r.log.Info("Skip unsupported kind", "kind", gvk.GroupKind()) // Not an error
+		gvk, _ := rc.Client.GroupVersionKindFor(route)
+		rc.log.Info("Skip unsupported kind", "kind", gvk.GroupKind()) // Not an error
 		return nil
 	}
 	return err
