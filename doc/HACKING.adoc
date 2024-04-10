@@ -21,7 +21,7 @@ Start the operator using one of the methods below, then use this script to verif
 hack/smoketest.sh
 ```
 
-The script creates a `Korrel8r` instance and verifies that it responds to REST API calls.
+The script creates a `Korrel8r` resource and verifies that it responds to REST API calls.
 If your operator is working correctly it should print some messages ending with "Success."
 
 You can customize your own korrel8r resource, and use a browser or REST tools to query it.

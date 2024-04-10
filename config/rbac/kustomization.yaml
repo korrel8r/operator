@@ -9,5 +9,4 @@ resources:
 - auth_proxy_role.yaml
 - auth_proxy_role_binding.yaml
 - auth_proxy_client_clusterrole.yaml
-- korrel8r_instance_role_binding.yaml
-- korrel8r_instance_service_account.yaml
+- korrel8r_default_role_binding.yaml

@@ -138,7 +138,7 @@ spec:
 			}
 
 			{
-				By("Checking Status Condition added to the Korrel8r instance")
+				By("Checking Status Condition added to Korrel8r resource")
 				found := &korrel8rv1alpha1.Korrel8r{}
 				Eventually(func() (err error) {
 					if err = k8sClient.Get(ctx, nsName, found); err == nil {

@@ -15,8 +15,11 @@ type Korrel8rSpec struct {
 	// Config is the configuration for a korrel8r deployment.
 	// If not provided there is a default configuration suitable for use in an openshift cluster.
 	//
-	// The "include" section can load additional configuration files provided at /etc/korrel8r
+	// The "include" section can load additional configuration files.
 	Config *Config `json:"config,omitempty"`
+
+	// ServiceAccountName for the korrel8r deployment. Use namespace default if missing.
+	ServiceAccountName string `json:"serviceAccountName,omitempty"`
 
 	// Debug provides optional settings intended to help with debugging problems.
 	Debug *DebugSpec `json:"debug,omitempty"`

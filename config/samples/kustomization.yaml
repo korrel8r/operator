@@ -3,5 +3,5 @@ kind: Kustomization
 
 ## Append samples you want in your CSV to this file as resources ##
 resources:
-- korrel8r_instance.yaml
+- korrel8r.yaml
 namespace: korrel8r

@@ -1,6 +1,6 @@
 #!/bin/bash
 # Smoke test for a deployed Korrel8r operator.
-# - Create a namespace and default Korrel8r instance
+# - Create a Korrel8r resource
 # - Wait for Korrel8r to be ready
 # - Connect to the REST API, check the response looks OK.
 #

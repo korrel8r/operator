@@ -46,7 +46,7 @@ spec:
                   If not provided there is a default configuration suitable for use in an openshift cluster.
 
 
-                  The "include" section can load additional configuration files provided at /etc/korrel8r
+                  The "include" section can load additional configuration files.
                 properties:
                   aliases:
                     description: Aliases defines short names for groups of related
@@ -165,6 +165,10 @@ spec:
                       KORREL8R_VERBOSE environment variable.
                     type: integer
                 type: object
+              serviceAccountName:
+                description: ServiceAccountName for the korrel8r deployment. Use namespace
+                  default if missing.
+                type: string
             type: object
           status:
             description: Korrel8rStatus defines the observed state of Korrel8r

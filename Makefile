@@ -9,8 +9,10 @@ help: ## Display this help.
 VERSION?=0.1.1-dev
 ## IMG: Base name of image to build or deploy, without version tag.
 IMG?=quay.io/korrel8r/operator
+## KORREL8R_VERSION: Version of korrel8r operand.
+KORREL8R_VERSION=0.5.10
 ## KORREL8R_IMAGE: Operand image containing the korrel8r executable.
-KORREL8R_IMAGE?=quay.io/korrel8r/korrel8r:v0.5.8
+KORREL8R_IMAGE?=quay.io/korrel8r/korrel8r:$(KORREL8R_VERSION)
 ## NAMESPACE: Operator namespace used by `make deploy` and `make bundle-run`
 NAMESPACE?=korrel8r
 ## IMGTOOL: May be podman or docker.
@@ -57,10 +59,12 @@ manifests: $(CONTROLLER_GEN) $(KUSTOMIZE) ## Generate ClusterRole and CustomReso
 generate: $(CONTROLLER_GEN) ## Generate code containing DeepCopy, DeepCopyInto, and DeepCopyObject methods.
 	$(CONTROLLER_GEN) object:headerFile="hack/boilerplate.go.txt" paths="./..."
 
+REQUIRE="github.com/korrel8r/korrel8r v$(KORREL8R_VERSION)"
 .PHONY: lint
 lint: $(GOLANGCI_LINT) ## Run the linter to find and fix code style problems.
 	go mod tidy
 	$(GOLANGCI_LINT) run --fix
+	@grep -Fq "$(REQUIRE)" go.mod || { echo $(REQUIRE) not found in go.mod; exit 1; }
 
 .PHONY: test
 test: manifests generate lint $(SETUP_ENVTEST) ## Run tests.
@@ -77,7 +81,7 @@ run: manifests generate lint install ## Build and run a controller from your hos
 	$(KUSTOMIZE) build config/overlays/rbac_for_test | kubectl apply -f -
 	KORREL8R_IMAGE=$(KORREL8R_IMAGE) go run main.go
 
-image-build:  ## Build the manager image.
+image-build: manifests generate ## Build the manager image.
 	$(IMGTOOL) build -q  -t $(IMAGE) .
 image-push: image-build ## Push the manager image.
 	$(IMGTOOL) push -q $(IMAGE)
@@ -103,9 +107,9 @@ undeploy: $(KUSTOMIZE) ## Undeploy controller from the K8s cluster specified in 
 
 ##@ Bundle
 
-bundle: manifests $(OPERATOR_SDK) ## Generate bundle manifests and metadata, then validate generated files.
+bundle: manifests generate $(OPERATOR_SDK) ## Generate bundle manifests and metadata, then validate generated files.
 	$(OPERATOR_SDK) generate kustomize manifests -q
-	$(KUSTOMIZE) build config/manifests | $(OPERATOR_SDK) generate bundle -q --overwrite --version $(VERSION) $(BUNDLE_METADATA_OPTS) --extra-service-accounts korrel8r-instance
+	$(KUSTOMIZE) build config/manifests | $(OPERATOR_SDK) generate bundle -q --overwrite --version $(VERSION) $(BUNDLE_METADATA_OPTS)
 	$(OPERATOR_SDK) bundle validate ./bundle
 	touch $@
 
@@ -144,17 +148,15 @@ clean-cluster: bundle-cleanup undeploy	## Remove all test artifacts from the clu
 	oc get -o name operator | grep korrel8r | xargs -r oc delete || true
 	oc delete -l app.kubernetes.io/name=korrel8r clusterrolebinding,clusterrole || true
 
-
-
 test-deploy: clean-cluster deploy ## Deploy via kustoize and run a smoke-test
 	hack/smoketest.sh
 
 test-bundle: clean-cluster bundle-run  ## Run the bundle and run a smoke-test
 	hack/smoketest.sh
 
-instance: install		## Create the korrel8r instance
+resource: install		## Create the default korrel8r resource
 	$(KUSTOMIZE) build config/samples | kubectl -n $(NAMESPACE) apply -f -
-	$(WATCH) kubectl wait -n $(NAMESPACE) --for=condition=available --timeout=60s deployment.apps/korrel8r-instance
+	$(WATCH) kubectl wait -n $(NAMESPACE) --for=condition=available --timeout=60s deployment.apps/korrel8r
 
 OPHUB?=$(error Set OPHUB to the path to your local community-operators-prod clone)
 OPHUB_VERSION=$(OPHUB)/operators/korrel8r/$(VERSION)

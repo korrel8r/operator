@@ -49,7 +49,7 @@ import (
 //+kubebuilder:rbac:groups=korrel8r.openshift.io,resources=korrel8rs/finalizers,verbs=update
 //
 //+kubebuilder:rbac:groups=core,resources=events,verbs=create;patch
-//+kubebuilder:rbac:groups=core,resources=configmaps;services;serviceaccounts,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=core,resources=configmaps;services,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=apps,resources=deployments,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=core,resources=pods,verbs=get;list;watch
 //+kubebuilder:rbac:groups=route.openshift.io,resources=routes,verbs=get;list;watch;create;update;patch;delete
@@ -104,15 +104,14 @@ func NewKorrel8rReconciler(image string, c client.Client, s *runtime.Scheme, e r
 
 // Owned resources created by this operator
 type Owned struct {
-	ConfigMap      corev1.ConfigMap
-	Deployment     appsv1.Deployment
-	Route          routev1.Route
-	Service        corev1.Service
-	ServiceAccount corev1.ServiceAccount
+	ConfigMap  corev1.ConfigMap
+	Deployment appsv1.Deployment
+	Route      routev1.Route
+	Service    corev1.Service
 }
 
 func (o *Owned) each(f func(o client.Object)) {
-	for _, obj := range []client.Object{&o.Deployment, &o.ConfigMap, &o.Service, &o.Route, &o.ServiceAccount} {
+	for _, obj := range []client.Object{&o.Deployment, &o.ConfigMap, &o.Service, &o.Route} {
 		f(obj)
 	}
 }
@@ -162,7 +161,7 @@ func (r *Korrel8rReconciler) newRequestContext(ctx context.Context, req reconcil
 		log:                log.FromContext(ctx),
 		labels:             maps.Clone(CommonLabels),
 	}
-	instance := req.Name // Unique name.
+	instance := req.Name
 	rc.labels[AppInstance] = instance
 	rc.labels[AppVersion] = rc.version
 	rc.selector.MatchLabels = maps.Clone(rc.labels)
@@ -207,7 +206,6 @@ func (r *Korrel8rReconciler) Reconcile(ctx context.Context, req reconcile.Reques
 
 	// Create or update each owned resource
 	for _, f := range []func() error{
-		rc.serviceAccount,
 		rc.configMap,
 		rc.deployment,
 		rc.service,
@@ -273,7 +271,7 @@ func (rc *requestContext) configMap() error {
 		config := rc.Korrel8r.Spec.Config
 		if config == nil { // Default configuration
 			config = &korrel8rv1alpha1.Config{
-				Include: []string{"/etc/korrel8r/stores/openshift-external.yaml", "/etc/korrel8r/rules/all.yaml"},
+				Include: []string{"/etc/korrel8r/korrel8r.yaml"},
 			}
 		}
 		conf, err := yaml.Marshal(config)
@@ -337,7 +335,7 @@ func (rc *requestContext) deployment() error {
 						},
 					},
 				},
-				ServiceAccountName: rc.ServiceAccount.Name,
+				ServiceAccountName: rc.Korrel8r.Spec.ServiceAccountName,
 				Volumes: []corev1.Volume{
 					{
 						Name: "config",
@@ -413,11 +411,6 @@ func (rc *requestContext) route() error {
 		return nil
 	}
 	return err
-}
-
-func (r *requestContext) serviceAccount() error {
-	sa := &r.ServiceAccount
-	return r.createOrUpdate(sa, func() error { return nil })
 }
 
 func (r *Korrel8rReconciler) kindOf(o client.Object) string {

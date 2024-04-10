@@ -85,7 +85,8 @@ Korrel8rSpec defines the desired state of Korrel8r
 If not provided there is a default configuration suitable for use in an openshift cluster. +
 
 
-The "include" section can load additional configuration files provided at /etc/korrel8r +
+The "include" section can load additional configuration files. +
+| *`serviceAccountName`* __string__ | ServiceAccountName for the korrel8r deployment. Use namespace default if missing. +
 | *`debug`* __xref:{anchor_prefix}-github-com-korrel8r-operator-api-v1alpha1-debugspec[$$DebugSpec$$]__ | Debug provides optional settings intended to help with debugging problems. +
 |===
 
