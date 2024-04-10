@@ -6,7 +6,7 @@ help: ## Display this help.
 	@grep -E '^## [A-Z0-9_]+: ' Makefile | sed 's/^## \([A-Z0-9_]*\): \(.*\)/\1#\2/' | column -s'#' -t
 
 ## VERSION: Semantic version for release. Use a -dev[N] suffix for work in progress.
-VERSION?=0.1.1-dev
+VERSION?=0.1.1
 ## IMG: Base name of image to build or deploy, without version tag.
 IMG?=quay.io/korrel8r/operator
 ## KORREL8R_VERSION: Version of korrel8r operand.
@@ -59,12 +59,13 @@ manifests: $(CONTROLLER_GEN) $(KUSTOMIZE) ## Generate ClusterRole and CustomReso
 generate: $(CONTROLLER_GEN) ## Generate code containing DeepCopy, DeepCopyInto, and DeepCopyObject methods.
 	$(CONTROLLER_GEN) object:headerFile="hack/boilerplate.go.txt" paths="./..."
 
-REQUIRE="github.com/korrel8r/korrel8r v$(KORREL8R_VERSION)"
+
 .PHONY: lint
 lint: $(GOLANGCI_LINT) ## Run the linter to find and fix code style problems.
 	go mod tidy
+	@REQUIRE="github.com/korrel8r/korrel8r v$(KORREL8R_VERSION)" \
+		grep -Fq -e "$$REQUIRE" go.mod || { echo "$$REQUIRE" not found in go.mod; exit 1; }
 	$(GOLANGCI_LINT) run --fix
-	@grep -Fq "$(REQUIRE)" go.mod || { echo $(REQUIRE) not found in go.mod; exit 1; }
 
 .PHONY: test
 test: manifests generate lint $(SETUP_ENVTEST) ## Run tests.
@@ -166,5 +167,5 @@ operatorhub: bundle		## Generate modified bundle manifest for operator hub.
 	echo -e '\n  # Annotations for OperatorHub\n  com.redhat.openshift.versions: "v4.10"' >> $(OPHUB_VERSION)/metadata/annotations.yaml
 
 tag-release:
-	hack/tag-release.sh $(VERSION)
+	hack/tag-release.sh $(VERSION) $(TAG_FLAGS)
 	$(MAKE) push-latest
