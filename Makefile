@@ -6,7 +6,7 @@ help: ## Display this help.
 	@grep -E '^## [A-Z0-9_]+: ' Makefile | sed 's/^## \([A-Z0-9_]*\): \(.*\)/\1#\2/' | column -s'#' -t
 
 ## VERSION: Semantic version for release. Use a -dev[N] suffix for work in progress.
-VERSION?=0.1.1
+VERSION?=0.1.1-dev
 ## IMG: Base name of image to build or deploy, without version tag.
 IMG?=quay.io/korrel8r/operator
 ## KORREL8R_VERSION: Version of korrel8r operand.
@@ -91,7 +91,6 @@ image-push: image-build ## Push the manager image.
 
 .PHONY: install
 install: manifests ## Install CRDs into the K8s cluster specified in ~/.kube/config.
-	oc create ns $(NAMESPACE) || true
 	$(KUSTOMIZE) build config/crd | kubectl apply -f -
 
 .PHONY: uninstall
@@ -169,3 +168,6 @@ operatorhub: bundle		## Generate modified bundle manifest for operator hub.
 tag-release:
 	hack/tag-release.sh $(VERSION) $(TAG_FLAGS)
 	$(MAKE) push-latest
+
+tools: $(BINGO) ## Download all tools needed for development
+	$(BINGO) get

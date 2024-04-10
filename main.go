@@ -30,7 +30,7 @@ func fatalIf(bad bool, format string, args ...any) {
 
 func main() {
 	// Environment variables
-	defaultVerbose := 0
+	defaultVerbose := 1
 	if s := os.Getenv(controllers.VerboseEnv); s != "" {
 		n, err := strconv.Atoi(s)
 		fatalIf(err != nil, "Invalid environment variable: %v=%v", controllers.VerboseEnv, s)
