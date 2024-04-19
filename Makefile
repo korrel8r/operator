@@ -6,11 +6,11 @@ help: ## Display this help.
 	@grep -E '^## [A-Z0-9_]+: ' Makefile | sed 's/^## \([A-Z0-9_]*\): \(.*\)/\1#\2/' | column -s'#' -t
 
 ## VERSION: Semantic version for release. Use a -dev[N] suffix for work in progress.
-VERSION?=0.1.1-dev
+VERSION?=0.1.2
 ## IMG: Base name of image to build or deploy, without version tag.
 IMG?=quay.io/korrel8r/operator
 ## KORREL8R_VERSION: Version of korrel8r operand.
-KORREL8R_VERSION=0.5.10
+KORREL8R_VERSION=0.6.1
 ## KORREL8R_IMAGE: Operand image containing the korrel8r executable.
 KORREL8R_IMAGE?=quay.io/korrel8r/korrel8r:$(KORREL8R_VERSION)
 ## NAMESPACE: Operator namespace used by `make deploy` and `make bundle-run`
@@ -60,11 +60,12 @@ generate: $(CONTROLLER_GEN) ## Generate code containing DeepCopy, DeepCopyInto, 
 	$(CONTROLLER_GEN) object:headerFile="hack/boilerplate.go.txt" paths="./..."
 
 
+# Make sure we have the right version of korrel8r in go.mod
+KORREL8R_MOD=github.com/korrel8r/korrel8r v$(KORREL8R_VERSION)
 .PHONY: lint
 lint: $(GOLANGCI_LINT) ## Run the linter to find and fix code style problems.
 	go mod tidy
-	@REQUIRE="github.com/korrel8r/korrel8r v$(KORREL8R_VERSION)" \
-		grep -Fq -e "$$REQUIRE" go.mod || { echo "$$REQUIRE" not found in go.mod; exit 1; }
+	@grep -q "$(KORREL8R_MOD)" go.mod || { echo "Missing require in go.mod: $(KORREL8R_MOD)"; exit 1; }
 	$(GOLANGCI_LINT) run --fix
 
 .PHONY: test
@@ -129,10 +130,6 @@ bundle-cleanup: $(OPERATOR_SDK)
 .PHONY: push-all
 push-all: image-push bundle-push
 
-push-latest: push-all
-	$(IMGTOOL) push $(IMAGE) $(IMG):latest
-	$(IMGTOOL) push $(BUNDLE_IMAGE) $(IMG)-bundle:latest
-
 .PHONY: doc
 doc: doc/zz_api-ref.adoc
 
@@ -165,9 +162,10 @@ operatorhub: bundle		## Generate modified bundle manifest for operator hub.
 	cp -aT bundle $(OPHUB_VERSION)
 	echo -e '\n  # Annotations for OperatorHub\n  com.redhat.openshift.versions: "v4.10"' >> $(OPHUB_VERSION)/metadata/annotations.yaml
 
-tag-release:
+release: push-all
 	hack/tag-release.sh $(VERSION) $(TAG_FLAGS)
-	$(MAKE) push-latest
+	$(IMGTOOL) push $(IMAGE) $(IMG):latest
+	$(IMGTOOL) push $(BUNDLE_IMAGE) $(IMG)-bundle:latest
 
 tools: $(BINGO) ## Download all tools needed for development
 	$(BINGO) get
