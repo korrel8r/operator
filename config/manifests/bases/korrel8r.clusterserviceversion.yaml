@@ -4,8 +4,8 @@ metadata:
   annotations:
     alm-examples: '[]'
     capabilities: Basic Install
-    categories: Observability
-    containerImage: quay.io/korrel8r/operator
+    categories: OpenShift Optional,Monitoring,Logging & Tracing
+    containerImage: quay.io/korrel8r/operator:0.1.2
     description: Correlate cluster resources and observability data.
     repository: https://github.com/korrel8r/korrel8r
     support: Korrel8r Project
