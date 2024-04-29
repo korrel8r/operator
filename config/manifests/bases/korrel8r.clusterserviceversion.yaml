@@ -5,18 +5,22 @@ metadata:
     alm-examples: '[]'
     capabilities: Basic Install
     categories: OpenShift Optional,Monitoring,Logging & Tracing
-    containerImage: quay.io/korrel8r/operator:0.1.2
+    containerImage: quay.io/korrel8r/operator:0.0.0
     description: Correlate cluster resources and observability data.
     operatorframework.io/initialization-resource: |
-      apiVersion: korrel8r.openshift.io/v1alpha1
-      kind: Korrel8r
-      metadata:
-        name: korrel8r
+      {
+        "apiVersion": "korrel8r.openshift.io/v1alpha1",
+        "kind": "Korrel8r",
+        "metadata": {
+          "name": "korrel8r",
+          "namespace": "korrel8r"
+        }
+      }
     operatorframework.io/suggested-namespace: korrel8r
     repository: https://github.com/korrel8r/korrel8r
     support: Korrel8r Project
   name: korrel8r.v0.0.0
-  namespace: placeholder
+  namespace: system
 spec:
   apiservicedefinitions: {}
   customresourcedefinitions:

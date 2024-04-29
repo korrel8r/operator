@@ -7,3 +7,19 @@ resources:
   - ../default
   - ../samples
   - ../scorecard
+  - ./bases/korrel8r.clusterserviceversion.yaml
+
+replacements:
+  - source:
+      name: controller-manager
+      kind: Deployment
+      version: v1
+      group: apps
+      namespace: system
+      fieldPath: spec.template.spec.containers.[name=manager].image
+    targets:
+      - select:
+          kind: ClusterServiceVersion
+          name: korrel8r.v0.0.0
+        fieldPaths:
+          - metadata.annotations.containerImage
