@@ -40,122 +40,33 @@ spec:
           spec:
             description: Korrel8rSpec defines the desired state of Korrel8r
             properties:
-              config:
+              configMap:
                 description: |-
-                  Config is the configuration for a korrel8r deployment.
-                  If not provided there is a default configuration suitable for use in an openshift cluster.
+                  ConfigMap containing optional custom configuration for Korrel8r.
 
 
-                  The "include" section can load additional configuration files.
+                  If specified, the map must contain the key 'korrel8r.yaml'.
+                  This will be used as the primary configuration file.
+
+
+                  The entire ConfigMap is mounted in the same directory,
+                  so korrel8r.yaml can include other files from the same ConfigMap.
+
+
+                  The default korrel8r configuration files can also be included,
+                  they are available under /etc/korrel8r in the image.
+
+
+                  See https://korrel8r.github.io/korrel8r/#configuration for more about configuring Korrel8r.
                 properties:
-                  aliases:
-                    description: Aliases defines short names for groups of related
-                      classes.
-                    items:
-                      description: Class defines a shortcut name for a set of existing
-                        classes.
-                      properties:
-                        classes:
-                          description: Classes are the names of classes in this group.
-                          items:
-                            type: string
-                          type: array
-                        domain:
-                          description: Domain of the classes, all must be in the same
-                            domain.
-                          type: string
-                        name:
-                          description: Name is the short name for a group of classes.
-                          type: string
-                      required:
-                      - classes
-                      - domain
-                      - name
-                      type: object
-                    type: array
-                  include:
-                    description: Include lists additional configuration files or URLs
-                      to include.
-                    items:
-                      type: string
-                    type: array
-                  rules:
-                    description: Rules define the relationships that korrel8r will
-                      follow.
-                    items:
-                      description: |-
-                        Rule specifies a template rule.
-                        It generates one or more korrel8r.Rule.
-                      properties:
-                        goal:
-                          description: Goal specifies the set of classes that this
-                            rule can produce.
-                          properties:
-                            classes:
-                              description: |-
-                                Classes is a list of class names to be selected from the domain.
-                                If absent, all classes in the domain are selected.
-                              items:
-                                type: string
-                              type: array
-                            domain:
-                              description: Domain is the domain for selected classes.
-                              type: string
-                          required:
-                          - domain
-                          type: object
-                        name:
-                          description: |-
-                            Name is a short, descriptive name.
-                            If omitted, a name is generated from Start and Goal.
-                          type: string
-                        result:
-                          description: |-
-                            TemplateResult contains templates to generate the result of applying this rule.
-                            Each template is applied to an object from one of the `start` classes.
-                            If any template yields a blank string or an error, the rule does not apply.
-                          properties:
-                            query:
-                              description: Query template generates a query object
-                                suitable for the goal store.
-                              type: string
-                          required:
-                          - query
-                          type: object
-                        start:
-                          description: Start specifies the set of classes that this
-                            rule can apply to.
-                          properties:
-                            classes:
-                              description: |-
-                                Classes is a list of class names to be selected from the domain.
-                                If absent, all classes in the domain are selected.
-                              items:
-                                type: string
-                              type: array
-                            domain:
-                              description: Domain is the domain for selected classes.
-                              type: string
-                          required:
-                          - domain
-                          type: object
-                      required:
-                      - goal
-                      - result
-                      - start
-                      type: object
-                    type: array
-                  stores:
-                    description: Stores is a list of store configurations.
-                    items:
-                      additionalProperties:
-                        type: string
-                      description: |-
-                        StoreConfig is a map of name:value attributes used to connect to a store.
-                        The names and values depend on the type of store.
-                      type: object
-                    type: array
+                  name:
+                    description: |-
+                      Name of the referent.
+                      More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                      TODO: Add other useful fields. apiVersion, kind, uid?
+                    type: string
                 type: object
+                x-kubernetes-map-type: atomic
               debug:
                 description: Debug provides optional settings intended to help with
                   debugging problems.

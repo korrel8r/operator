@@ -3,23 +3,31 @@
 package v1alpha1
 
 import (
-	"github.com/korrel8r/korrel8r/pkg/config"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // NOTE: Run "make" to regenerate code after modifying this file.
-// JSON tags are required for fields to be serialized.
 
 // Korrel8rSpec defines the desired state of Korrel8r
 type Korrel8rSpec struct {
-	// Config is the configuration for a korrel8r deployment.
-	// If not provided there is a default configuration suitable for use in an openshift cluster.
-	//
-	// The "include" section can load additional configuration files.
-	Config *Config `json:"config,omitempty"`
-
 	// ServiceAccountName for the korrel8r deployment. Use namespace default if missing.
 	ServiceAccountName string `json:"serviceAccountName,omitempty"`
+
+	// ConfigMap containing optional custom configuration for Korrel8r.
+	//
+	// If specified, the map must contain the key 'korrel8r.yaml'.
+	// This will be used as the primary configuration file.
+	//
+	// The entire ConfigMap is mounted in the same directory,
+	// so korrel8r.yaml can include other files from the same ConfigMap.
+	//
+	// The default korrel8r configuration files can also be included,
+	// they are available under /etc/korrel8r in the image.
+	//
+	// See https://korrel8r.github.io/korrel8r/#configuration for more about configuring Korrel8r.
+	//
+	ConfigMap *corev1.LocalObjectReference `json:"configMap,omitempty"`
 
 	// Debug provides optional settings intended to help with debugging problems.
 	Debug *DebugSpec `json:"debug,omitempty"`
@@ -29,9 +37,6 @@ type DebugSpec struct {
 	// Verbose sets the numeric logging verbosity for the KORREL8R_VERBOSE environment variable.
 	Verbose int `json:"verbose,omitempty"`
 }
-
-// Config wraps the korrel8r Config struct for API code generation.
-type Config config.Config
 
 // Korrel8rStatus defines the observed state of Korrel8r
 type Korrel8rStatus struct {

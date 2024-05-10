@@ -10,7 +10,7 @@ VERSION?=0.1.4-dev
 ## IMG: Base name of image to build or deploy, without version tag.
 IMG?=quay.io/korrel8r/operator
 ## KORREL8R_VERSION: Version of korrel8r operand.
-KORREL8R_VERSION=0.6.1
+KORREL8R_VERSION=0.6.2
 ## KORREL8R_IMAGE: Operand image containing the korrel8r executable.
 KORREL8R_IMAGE?=quay.io/korrel8r/korrel8r:$(KORREL8R_VERSION)
 ## NAMESPACE: Operator namespace used by `make deploy` and `make bundle-run`
@@ -59,13 +59,8 @@ manifests: $(CONTROLLER_GEN) $(KUSTOMIZE) ## Generate ClusterRole and CustomReso
 generate: $(CONTROLLER_GEN) ## Generate code containing DeepCopy, DeepCopyInto, and DeepCopyObject methods.
 	$(CONTROLLER_GEN) object:headerFile="hack/boilerplate.go.txt" paths="./..."
 
-
-# Make sure we have the right version of korrel8r in go.mod
-KORREL8R_MOD=github.com/korrel8r/korrel8r v$(KORREL8R_VERSION)
-.PHONY: lint
-lint: $(GOLANGCI_LINT) ## Run the linter to find and fix code style problems.
+lint: $(GOLANGCI_LINT) ## Run linters, fix code style problems.
 	go mod tidy
-	@grep -q "$(KORREL8R_MOD)" go.mod || { echo "Missing require in go.mod: $(KORREL8R_MOD)"; exit 1; }
 	$(GOLANGCI_LINT) run --fix
 
 .PHONY: test

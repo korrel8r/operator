@@ -19,24 +19,6 @@ Package v1alpha1 contains API Schema definitions for the korrel8r v1alpha1 API g
 
 
 
-[id="{anchor_prefix}-github-com-korrel8r-operator-api-v1alpha1-config"]
-==== Config
-
-Config wraps the korrel8r Config struct for API code generation.
-
-.Appears In:
-- xref:{anchor_prefix}-github-com-korrel8r-operator-api-v1alpha1-korrel8rspec[$$Korrel8rSpec$$]
-
-[cols="25a,75a", options="header"]
-|===
-| Field | Description
-| *`rules`* __xref:{anchor_prefix}-github-com-korrel8r-korrel8r-pkg-config-rule[$$Rule$$] array__ | Rules define the relationships that korrel8r will follow. +
-| *`aliases`* __xref:{anchor_prefix}-github-com-korrel8r-korrel8r-pkg-config-class[$$Class$$] array__ | Aliases defines short names for groups of related classes. +
-| *`stores`* __StoreConfig array__ | Stores is a list of store configurations. +
-| *`include`* __string array__ | Include lists additional configuration files or URLs to include. +
-|===
-
-
 [id="{anchor_prefix}-github-com-korrel8r-operator-api-v1alpha1-debugspec"]
 ==== DebugSpec
 
@@ -81,12 +63,23 @@ Korrel8rSpec defines the desired state of Korrel8r
 [cols="25a,75a", options="header"]
 |===
 | Field | Description
-| *`config`* __xref:{anchor_prefix}-github-com-korrel8r-operator-api-v1alpha1-config[$$Config$$]__ | Config is the configuration for a korrel8r deployment. +
-If not provided there is a default configuration suitable for use in an openshift cluster. +
-
-
-The "include" section can load additional configuration files. +
 | *`serviceAccountName`* __string__ | ServiceAccountName for the korrel8r deployment. Use namespace default if missing. +
+| *`configMap`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.29/#localobjectreference-v1-core[$$LocalObjectReference$$]__ | ConfigMap containing optional custom configuration for Korrel8r. +
+
+
+If specified, the map must contain the key 'korrel8r.yaml'. +
+This will be used as the primary configuration file. +
+
+
+The entire ConfigMap is mounted in the same directory, +
+so korrel8r.yaml can include other files from the same ConfigMap. +
+
+
+The default korrel8r configuration files can also be included, +
+they are available under /etc/korrel8r in the image. +
+
+
+See https://korrel8r.github.io/korrel8r/#configuration for more about configuring Korrel8r. +
 | *`debug`* __xref:{anchor_prefix}-github-com-korrel8r-operator-api-v1alpha1-debugspec[$$DebugSpec$$]__ | Debug provides optional settings intended to help with debugging problems. +
 |===
 

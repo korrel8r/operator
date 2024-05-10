@@ -4,8 +4,6 @@ package controllers
 
 import (
 	"context"
-	"crypto/md5"
-	"errors"
 	"fmt"
 	"maps"
 	"os"
@@ -18,14 +16,12 @@ import (
 	"github.com/google/go-cmp/cmp"
 	korrel8rv1alpha1 "github.com/korrel8r/operator/api/v1alpha1"
 	routev1 "github.com/openshift/api/route/v1"
-	"gopkg.in/yaml.v2"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
@@ -33,7 +29,6 @@ import (
 	"k8s.io/client-go/util/retry"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
-	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/log"
@@ -49,37 +44,34 @@ import (
 //+kubebuilder:rbac:groups=korrel8r.openshift.io,resources=korrel8rs/finalizers,verbs=update
 //
 //+kubebuilder:rbac:groups=core,resources=events,verbs=create;patch
-//+kubebuilder:rbac:groups=core,resources=configmaps;services,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=core,resources=services,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=apps,resources=deployments,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=core,resources=pods,verbs=get;list;watch
 //+kubebuilder:rbac:groups=route.openshift.io,resources=routes,verbs=get;list;watch;create;update;patch;delete
 //
 
 const (
-	ApplicationName        = "korrel8r"
-	ComponentName          = "engine"
-	ConfigKey              = "korrel8r.yaml" // ConfigKey for the root configuration in ConfigMap.Data.
-	ImageEnv               = "KORREL8R_IMAGE"
-	VerboseEnv             = "KORREL8R_VERBOSE"
+	ApplicationName = "korrel8r"
+	ConfigKey       = "korrel8r.yaml" // ConfigKey for the root configuration in ConfigMap.Data.
+	ImageEnv        = "KORREL8R_IMAGE"
+	VerboseEnv      = "KORREL8R_VERBOSE"
+
 	ConditionTypeAvailable = "Available"
 	ConditionTypeDegraded  = "Degraded"
-	ReasonReconciling      = "Reconciling"
-	ReasonReconciled       = "Reconciled"
+
+	ReasonReconciling = "Reconciling"
+	ReasonReconciled  = "Reconciled"
 
 	// K8s recommended label names
-	App          = "app.kubernetes.io/"
-	AppComponent = App + "component"
-	AppInstance  = App + "instance"
-	AppName      = App + "name"
-	AppVersion   = App + "version"
+	App         = "app.kubernetes.io/"
+	AppInstance = App + "instance"
+	AppName     = App + "name"
+	AppVersion  = App + "version"
 )
 
 var (
 	// Static labels applied to all owned objects.
-	CommonLabels = map[string]string{
-		AppName:      ApplicationName,
-		AppComponent: ComponentName,
-	}
+	CommonLabels = map[string]string{AppName: ApplicationName}
 )
 
 // Korrel8rReconciler reconciles a Korrel8r object
@@ -104,24 +96,15 @@ func NewKorrel8rReconciler(image string, c client.Client, s *runtime.Scheme, e r
 
 // Owned resources created by this operator
 type Owned struct {
-	ConfigMap  corev1.ConfigMap
 	Deployment appsv1.Deployment
 	Route      routev1.Route
 	Service    corev1.Service
 }
 
 func (o *Owned) each(f func(o client.Object)) {
-	for _, obj := range []client.Object{&o.Deployment, &o.ConfigMap, &o.Service, &o.Route} {
+	for _, obj := range []client.Object{&o.Deployment, &o.Service, &o.Route} {
 		f(obj)
 	}
-}
-
-// CacheOptions for the controller manager to limit watches objects in the korrel8r app.
-func CacheOptions() cache.Options {
-	byObject := map[client.Object]cache.ByObject{}
-	selector := labels.Selector(labels.SelectorFromSet(labels.Set{AppName: ApplicationName}))
-	new(Owned).each(func(o client.Object) { byObject[o] = cache.ByObject{Label: selector} })
-	return cache.Options{ByObject: byObject}
 }
 
 func (r *Korrel8rReconciler) SetupWithManager(mgr manager.Manager) error {
@@ -135,29 +118,25 @@ func (r *Korrel8rReconciler) SetupWithManager(mgr manager.Manager) error {
 
 // requestContext computed for each call to Reconcile
 type requestContext struct {
-	*Korrel8rReconciler // Parent reconciler
-
-	// Main resource
-	Korrel8r korrel8rv1alpha1.Korrel8r
-	// Owned resources.
-	Owned
+	*Korrel8rReconciler                           // Parent
+	Korrel8r            korrel8rv1alpha1.Korrel8r // Main resource
+	Owned                                         // Owned resources.
 
 	// Context
+	reconcile.Request
 	ctx context.Context
-	req reconcile.Request
 	log logr.Logger
 
 	// Values computed per-reconcile
-	labels     map[string]string
-	selector   metav1.LabelSelector
-	configHash string // Computed by configMap(), set by deployment().
+	labels   map[string]string
+	selector metav1.LabelSelector
 }
 
 func (r *Korrel8rReconciler) newRequestContext(ctx context.Context, req reconcile.Request) *requestContext {
 	rc := &requestContext{
 		Korrel8rReconciler: r,
 		ctx:                ctx,
-		req:                req,
+		Request:            req,
 		log:                log.FromContext(ctx),
 		labels:             maps.Clone(CommonLabels),
 	}
@@ -190,7 +169,7 @@ func (r *Korrel8rReconciler) Reconcile(ctx context.Context, req reconcile.Reques
 
 	// Update status condition on return.
 	defer func() {
-		cond := conditionFor(err)
+		cond := errorCondition(err)
 		if meta.SetStatusCondition(&rc.Korrel8r.Status.Conditions, cond) { // Condition changed
 			log.Info("Updating status", "reason", cond.Reason, "message", cond.Message)
 			if err2 := r.Status().Update(ctx, &rc.Korrel8r); err2 != nil {
@@ -206,7 +185,6 @@ func (r *Korrel8rReconciler) Reconcile(ctx context.Context, req reconcile.Reques
 
 	// Create or update each owned resource
 	for _, f := range []func() error{
-		rc.configMap,
 		rc.deployment,
 		rc.service,
 		rc.route,
@@ -218,7 +196,7 @@ func (r *Korrel8rReconciler) Reconcile(ctx context.Context, req reconcile.Reques
 	return reconcile.Result{}, nil
 }
 
-func conditionFor(err error) metav1.Condition {
+func errorCondition(err error) metav1.Condition {
 	if err == nil {
 		return metav1.Condition{
 			Type:    ConditionTypeAvailable,
@@ -265,30 +243,6 @@ func (rc *requestContext) createOrUpdate(o client.Object, mutate func() error) e
 	return err
 }
 
-func (rc *requestContext) configMap() error {
-	cm := &rc.ConfigMap
-	return rc.createOrUpdate(cm, func() error {
-		config := rc.Korrel8r.Spec.Config
-		if config == nil { // Default configuration
-			config = &korrel8rv1alpha1.Config{
-				Include: []string{"/etc/korrel8r/korrel8r.yaml"},
-			}
-		}
-		conf, err := yaml.Marshal(config)
-		if err != nil {
-			return fmt.Errorf("invalid korrel8r configuration: %w", err)
-		}
-		if cm.Data == nil {
-			cm.Data = map[string]string{}
-		}
-		// Only reconcile the main config-key entry, allow user to add others.
-		cm.Data[ConfigKey] = string(conf)
-		// Save the config hash for the deployment.
-		rc.configHash = fmt.Sprintf("%x", md5.Sum(conf))
-		return nil
-	})
-}
-
 func (rc *requestContext) deployment() error {
 	d := &rc.Deployment
 	return rc.createOrUpdate(d, func() error {
@@ -305,19 +259,20 @@ func (rc *requestContext) deployment() error {
 			Spec: corev1.PodSpec{
 				Containers: []corev1.Container{
 					{
-						Name:    ApplicationName,
-						Image:   rc.image,
-						Command: []string{"korrel8r", "web", "--https", ":8443", "--cert", "/secrets/tls.crt", "--key", "/secrets/tls.key", "--config", "/config/korrel8r.yaml"},
+						Name:  ApplicationName,
+						Image: rc.image,
+						Command: []string{
+							"korrel8r",
+							"web",
+							"--https=:8443",
+							"--cert=/secrets/tls.crt",
+							"--key=/secrets/tls.key",
+						},
 						VolumeMounts: []corev1.VolumeMount{
 							{
 								Name:      "secrets",
 								ReadOnly:  true,
 								MountPath: "/secrets",
-							},
-							{
-								Name:      "config",
-								ReadOnly:  true,
-								MountPath: "/config",
 							},
 						},
 						Ports: []corev1.ContainerPort{
@@ -338,26 +293,35 @@ func (rc *requestContext) deployment() error {
 				ServiceAccountName: rc.Korrel8r.Spec.ServiceAccountName,
 				Volumes: []corev1.Volume{
 					{
-						Name: "config",
-						VolumeSource: corev1.VolumeSource{
-							ConfigMap: &corev1.ConfigMapVolumeSource{
-								LocalObjectReference: corev1.LocalObjectReference{Name: rc.ConfigMap.Name},
-							}},
-					},
-					{
 						Name:         "secrets",
-						VolumeSource: corev1.VolumeSource{Secret: &corev1.SecretVolumeSource{SecretName: rc.req.Name}},
+						VolumeSource: corev1.VolumeSource{Secret: &corev1.SecretVolumeSource{SecretName: rc.Name}},
 					},
 				},
 			},
 		}
-		env := &d.Spec.Template.Spec.Containers[0].Env
-		if rc.configHash == "" {
-			panic(errors.New("logic error: configHash is emptpy, deployment() called before configmap()"))
+		// Make additional changes to the container based on Korrel8r.Spec.
+		c := &d.Spec.Template.Spec.Containers[0]
+		if rc.Korrel8r.Spec.ConfigMap != nil && rc.Korrel8r.Spec.ConfigMap.Name != "" {
+			// Use the supplied config map for configuration
+			v := &d.Spec.Template.Spec.Volumes
+			*v = append(*v, corev1.Volume{ // Add the cm volume
+				Name: "config",
+				VolumeSource: corev1.VolumeSource{
+					ConfigMap: &corev1.ConfigMapVolumeSource{
+						LocalObjectReference: corev1.LocalObjectReference{Name: rc.Korrel8r.Spec.ConfigMap.Name},
+					}},
+			})
+			c.VolumeMounts = append(c.VolumeMounts, corev1.VolumeMount{ // Mount the cm volume
+				Name:      "config",
+				ReadOnly:  true,
+				MountPath: "/config",
+			})
+			c.Command = append(c.Command, "--config=/config/korrel8r.yaml") // Use mounted config.
+		} else {
+			c.Command = append(c.Command, "--config=/etc/korrel8r/openshift-svc.yaml") // Use config from image.
 		}
-		*env = setEnv(*env, "CONFIG_HASH", rc.configHash) // To force update if configmap changes.
 		if rc.Korrel8r.Spec.Debug != nil {
-			*env = setEnv(*env, VerboseEnv, strconv.Itoa(rc.Korrel8r.Spec.Debug.Verbose))
+			c.Env = setEnv(c.Env, VerboseEnv, strconv.Itoa(rc.Korrel8r.Spec.Debug.Verbose))
 		}
 		return nil
 	})
@@ -378,7 +342,7 @@ func (r *requestContext) service() error {
 		port := intstr.FromInt(8443)
 		s.ObjectMeta.Annotations = map[string]string{
 			// Generate a TLS server certificate in a secret
-			"service.beta.openshift.io/serving-cert-secret-name": r.req.Name,
+			"service.beta.openshift.io/serving-cert-secret-name": r.Name,
 		}
 		s.Spec = corev1.ServiceSpec{
 			Selector: r.selector.MatchLabels,
@@ -398,10 +362,10 @@ func (r *requestContext) service() error {
 func (rc *requestContext) route() error {
 	route := &rc.Route
 	err := rc.createOrUpdate(route, func() error {
-		route.Spec.TLS = &routev1.TLSConfig{Termination: routev1.TLSTerminationPassthrough}
+		route.Spec.TLS = &routev1.TLSConfig{Termination: routev1.TLSTerminationReencrypt}
 		route.Spec.To = routev1.RouteTargetReference{
 			Kind: "Service",
-			Name: rc.req.Name,
+			Name: rc.Name,
 		}
 		return nil
 	})

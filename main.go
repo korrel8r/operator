@@ -58,7 +58,6 @@ func main() {
 		Metrics:                server.Options{BindAddress: *metricsAddr},
 		HealthProbeBindAddress: *probeAddr,
 		Logger:                 log,
-		Cache:                  controllers.CacheOptions(),
 	})
 	check(err, "Unable to start manager")
 

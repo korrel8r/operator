@@ -29,6 +29,7 @@ oc wait -n $NAMESPACE korrel8r/$NAME --for=condition=Available --timeout 60s
 
 HOST=$(oc get -n $NAMESPACE route/$NAME -o template='{{.spec.host}}')
 URL=https://$HOST/api/v1alpha1/domains
+echo "REST URL: " $URL
 RESPONSE=$(curl -k -f -sS --retry 10 --retry-all-errors --retry-connrefused $URL)
 
 if [[ $RESPONSE =~ '"name":"k8s"' ]] ; then
