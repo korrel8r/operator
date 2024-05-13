@@ -140,7 +140,7 @@ clean-cluster: bundle-cleanup undeploy	## Remove all test artifacts from the clu
 	oc get -o name operator | grep korrel8r | xargs -r oc delete || true
 	oc delete -l app.kubernetes.io/name=korrel8r clusterrolebinding,clusterrole || true
 
-test-deploy: clean-cluster deploy ## Deploy via kustoize and run a smoke-test
+test-deploy: clean-cluster deploy ## Deploy via kustomize and run a smoke-test
 	hack/smoketest.sh
 
 test-bundle: clean-cluster bundle-run  ## Run the bundle and run a smoke-test
