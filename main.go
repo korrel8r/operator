@@ -61,11 +61,7 @@ func main() {
 	})
 	check(err, "Unable to start manager")
 
-	kr := controllers.NewKorrel8rReconciler(
-		image,
-		mgr.GetClient(),
-		mgr.GetScheme(),
-		mgr.GetEventRecorderFor(controllers.ApplicationName))
+	kr := controllers.NewKorrel8rReconciler(image, mgr.GetClient(), mgr.GetScheme())
 	check(kr.SetupWithManager(mgr), "Unable to create controller")
 	check(mgr.AddHealthzCheck("healthz", healthz.Ping), "Unable to set up health check")
 	check(mgr.AddReadyzCheck("readyz", healthz.Ping), "Unable to set up ready check")

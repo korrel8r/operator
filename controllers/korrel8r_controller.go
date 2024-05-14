@@ -25,7 +25,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
-	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/retry"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
@@ -77,20 +76,18 @@ var (
 // Korrel8rReconciler reconciles a Korrel8r object
 type Korrel8rReconciler struct {
 	client.Client
-	Scheme   *runtime.Scheme
-	Recorder record.EventRecorder
-	image    string
-	version  string
+	Scheme  *runtime.Scheme
+	image   string
+	version string
 }
 
-func NewKorrel8rReconciler(image string, c client.Client, s *runtime.Scheme, e record.EventRecorder) *Korrel8rReconciler {
+func NewKorrel8rReconciler(image string, c client.Client, s *runtime.Scheme) *Korrel8rReconciler {
 	_, version, _ := strings.Cut(image, ":")
 	return &Korrel8rReconciler{
-		Client:   c,
-		Scheme:   s,
-		Recorder: e,
-		image:    image,
-		version:  version,
+		Client:  c,
+		Scheme:  s,
+		image:   image,
+		version: version,
 	}
 }
 
@@ -175,9 +172,6 @@ func (r *Korrel8rReconciler) Reconcile(ctx context.Context, req reconcile.Reques
 			if err2 := r.Status().Update(ctx, &rc.Korrel8r); err2 != nil {
 				log.Error(err2, "Status update failed")
 				err = err2
-			}
-			if err != nil {
-				r.Recorder.Event(&rc.Korrel8r, corev1.EventTypeWarning, cond.Reason, err.Error())
 			}
 		}
 		rc.logChange(controllerutil.OperationResultUpdated, korrel8rBefore, &rc.Korrel8r)

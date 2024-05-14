@@ -18,7 +18,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/kubernetes/scheme"
-	"k8s.io/client-go/tools/record"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
@@ -76,7 +75,7 @@ func TestKorrel8rReconcilerReconcile_empty(t *testing.T) {
 	require.NoError(t, c.Create(ctx, korrel8r))
 	gvk := schema.FromAPIVersionAndKind(korrel8rv1alpha1.GroupVersion.String(), reflect.TypeOf(korrel8r).Elem().Name())
 	ownerRef := *metav1.NewControllerRef(korrel8r, gvk) // Expected owner ref
-	korrel8rReconciler := NewKorrel8rReconciler(image, c, c.Scheme(), record.NewFakeRecorder(1000))
+	korrel8rReconciler := NewKorrel8rReconciler(image, c, c.Scheme())
 	result, err := korrel8rReconciler.Reconcile(ctx, reconcile.Request{NamespacedName: nsName})
 	require.NoError(t, err)
 	require.Zero(t, result)
@@ -131,7 +130,7 @@ func TestKorrel8rReconcilerReconcile_configmap(t *testing.T) {
 
 	require.NoError(t, c.Create(ctx, korrel8r))
 
-	korrel8rReconciler := NewKorrel8rReconciler(image, c, c.Scheme(), record.NewFakeRecorder(1000))
+	korrel8rReconciler := NewKorrel8rReconciler(image, c, c.Scheme())
 	result, err := korrel8rReconciler.Reconcile(ctx, reconcile.Request{NamespacedName: nsName})
 	require.NoError(t, err)
 	require.Zero(t, result)
@@ -163,7 +162,7 @@ func TestKorrel8rReconcilerReconcile_debug(t *testing.T) {
 	require.NoError(t, c.Create(ctx, korrel8r))
 	nsName := client.ObjectKeyFromObject(korrel8r)
 
-	korrel8rReconciler := NewKorrel8rReconciler(image, c, c.Scheme(), record.NewFakeRecorder(1000))
+	korrel8rReconciler := NewKorrel8rReconciler(image, c, c.Scheme())
 	result, err := korrel8rReconciler.Reconcile(ctx, reconcile.Request{NamespacedName: nsName})
 	require.NoError(t, err)
 	require.Zero(t, result)
