@@ -5,10 +5,10 @@ help: ## Display this help.
 	@echo; echo  = Variables =
 	@grep -E '^## [A-Z0-9_]+: ' Makefile | sed 's/^## \([A-Z0-9_]*\): \(.*\)/\1#\2/' | column -s'#' -t
 
-## VERSION: Semantic version for release. Use a -dev[N] suffix for work in progress.
-VERSION?=0.1.5-dev
-## IMG: Base name of image to build or deploy, without version tag.
-IMG?=quay.io/korrel8r/operator
+## VERSION: Semantic version, default is pre-release based on git-describe.
+VERSION?=$(shell hack/semver-describe.sh)
+## IMG_ORG: org name for images, for example quay.io/alanconway.
+IMG_ORG?=$(error Set IMG_ORG to organization prefix for images, e.g. IMG_ORG=quay.io/alanconway)
 ## KORREL8R_VERSION: Version of korrel8r operand.
 KORREL8R_VERSION=0.6.2
 ## KORREL8R_IMAGE: Operand image containing the korrel8r executable.
@@ -20,17 +20,16 @@ IMGTOOL?=$(shell which podman || which docker)
 ## ENVTEST_K8S_VERSION: version of kubebuilder for envtest testing.
 ENVTEST_K8S_VERSION=1.29.x
 
-# Full name of manager image
+# Names of image and bundle images.
+IMG?=$(IMG_ORG)/operator
 IMAGE=$(IMG):$(VERSION)
+BUNDLE_IMAGE ?= $(IMG)-bundle:$(VERSION)
 
 # Bundle options.
 DEFAULT_CHANNEL ?= stable
 BUNDLE_CHANNELS ?= --channels=$(DEFAULT_CHANNEL)
 BUNDLE_DEFAULT_CHANNEL ?= --default-channel=$(DEFAULT_CHANNEL)
 BUNDLE_METADATA_OPTS ?= $(BUNDLE_CHANNELS) $(BUNDLE_DEFAULT_CHANNEL)
-
-# BUNDLE_IMAGE defines the image:tag used for the bundle.
-BUNDLE_IMAGE ?= $(IMG)-bundle:$(VERSION)
 
 # Setting SHELL to bash allows bash commands to be executed by recipes.
 # Options are set to exit when a recipe line exits non-zero or a piped command fails.
