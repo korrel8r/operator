@@ -10,4 +10,4 @@ spec:
         - name: manager
           env:
           - name: KORREL8R_IMAGE
-            value: quay.io/korrel8r/korrel8r:0.6.2
+            value: quay.io/korrel8r/korrel8r:0.6.3

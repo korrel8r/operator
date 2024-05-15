@@ -5,12 +5,12 @@ help: ## Display this help.
 	@echo; echo  = Variables =
 	@grep -E '^## [A-Z0-9_]+: ' Makefile | sed 's/^## \([A-Z0-9_]*\): \(.*\)/\1#\2/' | column -s'#' -t
 
-## VERSION: Semantic version, default is pre-release based on git-describe.
-VERSION?=$(shell hack/semver-describe.sh)
+## VERSION: Semantic version for release, use -dev for development pre-release versions.
+VERSION?=0.1.5
 ## IMG_ORG: org name for images, for example quay.io/alanconway.
 IMG_ORG?=$(error Set IMG_ORG to organization prefix for images, e.g. IMG_ORG=quay.io/alanconway)
 ## KORREL8R_VERSION: Version of korrel8r operand.
-KORREL8R_VERSION=0.6.2
+KORREL8R_VERSION=0.6.3
 ## KORREL8R_IMAGE: Operand image containing the korrel8r executable.
 KORREL8R_IMAGE?=quay.io/korrel8r/korrel8r:$(KORREL8R_VERSION)
 ## NAMESPACE: Operator namespace used by `make deploy` and `make bundle-run`
@@ -156,7 +156,9 @@ operatorhub: bundle		## Generate modified bundle manifest for operator hub.
 	cp -aT bundle $(OPHUB_VERSION)
 	echo -e '\n  # Annotations for OperatorHub\n  com.redhat.openshift.versions: "v4.10"' >> $(OPHUB_VERSION)/metadata/annotations.yaml
 
-release: push-all
+pre-release: push-all ## Set VERISON and IMG_ORG to build release artifacts. Commit before doing 'make release'.
+
+release: pre-release		## Set VERISON and IMG_ORG to push release tags and images.
 	hack/tag-release.sh $(VERSION) $(TAG_FLAGS)
 	$(IMGTOOL) push $(IMAGE) $(IMG):latest
 	$(IMGTOOL) push $(BUNDLE_IMAGE) $(IMG)-bundle:latest
