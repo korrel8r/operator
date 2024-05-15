@@ -57,10 +57,10 @@ manifests: $(CONTROLLER_GEN) $(KUSTOMIZE) ## Generate ClusterRole and CustomReso
 
 .PHONY: generate
 generate: $(CONTROLLER_GEN) ## Generate code containing DeepCopy, DeepCopyInto, and DeepCopyObject methods.
+	go mod tidy
 	$(CONTROLLER_GEN) object:headerFile="hack/boilerplate.go.txt" paths="./..."
 
 lint: $(GOLANGCI_LINT) ## Run linters, fix code style problems.
-	go mod tidy
 	$(GOLANGCI_LINT) run --fix
 
 .PHONY: test
