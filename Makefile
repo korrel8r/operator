@@ -6,7 +6,7 @@ help: ## Display this help.
 	@grep -E '^## [A-Z0-9_]+: ' Makefile | sed 's/^## \([A-Z0-9_]*\): \(.*\)/\1#\2/' | column -s'#' -t
 
 ## VERSION: Semantic version for release. Use a -dev[N] suffix for work in progress.
-VERSION?=0.1.4-dev
+VERSION?=0.1.5-dev
 ## IMG: Base name of image to build or deploy, without version tag.
 IMG?=quay.io/korrel8r/operator
 ## KORREL8R_VERSION: Version of korrel8r operand.

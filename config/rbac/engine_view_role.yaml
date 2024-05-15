@@ -6,13 +6,14 @@ metadata:
   labels:
     rbac.authorization.k8s.io/aggregate-to-view: "true"
 rules:
-  - apiGroups:
-      - loki.grafana.com
-    resourceNames:
-      - logs
-    resources:
-      - application
-      - audit
-      - infrastructure
-    verbs:
-      - get
+- apiGroups:
+  - '*'
+  resources:
+  - '*'
+  verbs:
+  - '*'
+- nonResourceURLs:
+  - '*'
+  verbs:
+  - get
+  - list
