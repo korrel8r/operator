@@ -6,11 +6,11 @@ help: ## Display this help.
 	@grep -E '^## [A-Z0-9_]+: ' Makefile | sed 's/^## \([A-Z0-9_]*\): \(.*\)/\1#\2/' | column -s'#' -t
 
 ## VERSION: Semantic version for release, use -dev for development pre-release versions.
-VERSION?=0.1.5
+VERSION?=0.1.6-dev
 ## IMG_ORG: org name for images, for example quay.io/alanconway.
 IMG_ORG?=$(error Set IMG_ORG to organization prefix for images, e.g. IMG_ORG=quay.io/alanconway)
 ## KORREL8R_VERSION: Version of korrel8r operand.
-KORREL8R_VERSION=0.6.3
+KORREL8R_VERSION=0.6.4
 ## KORREL8R_IMAGE: Operand image containing the korrel8r executable.
 KORREL8R_IMAGE?=quay.io/korrel8r/korrel8r:$(KORREL8R_VERSION)
 ## NAMESPACE: Operator namespace used by `make deploy` and `make bundle-run`
@@ -117,7 +117,7 @@ bundle-push: bundle-build ## Push the bundle image.
 bundle-run: install bundle-push image-push $(OPERATOR_SDK)  ## Run the bundle image.
 	$(OPERATOR_SDK) -n $(NAMESPACE) cleanup korrel8r || true
 	oc create namespace $(NAMESPACE) || true
-	$(WATCH) $(OPERATOR_SDK) -n $(NAMESPACE) run bundle $(BUNDLE_IMAGE)
+	$(WATCH) $(OPERATOR_SDK) -n $(NAMESPACE) run bundle $(BUNDLE_IMAGE) --security-context-config restricted
 bundle-cleanup: $(OPERATOR_SDK)
 	$(OPERATOR_SDK) -n $(NAMESPACE) cleanup korrel8r || true
 
@@ -145,7 +145,7 @@ test-deploy: clean-cluster deploy ## Deploy via kustomize and run a smoke-test
 test-bundle: clean-cluster bundle-run  ## Run the bundle and run a smoke-test
 	hack/smoketest.sh
 
-resource: install		## Create the default korrel8r resource
+resource:			## Create the default korrel8r resource
 	$(KUSTOMIZE) build config/samples | kubectl -n $(NAMESPACE) apply -f -
 	$(WATCH) kubectl wait -n $(NAMESPACE) --for=condition=available --timeout=60s deployment.apps/korrel8r
 

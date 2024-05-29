@@ -25,7 +25,11 @@ spec:
         control-plane: controller-manager
     spec:
       securityContext:
-        runAsNonRoot: true
+        runAsUser:
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop:
+            - "ALL"
         seccompProfile:
           type: RuntimeDefault
       containers:
@@ -39,11 +43,14 @@ spec:
         image: controller
         name: manager
         securityContext:
+          runAsUser: 1000
           allowPrivilegeEscalation: false
           capabilities:
             drop:
               - "ALL"
-        livenessProbe:
+          seccompProfile:
+            type: RuntimeDefault
+          livenessProbe:
           httpGet:
             path: /healthz
             port: 8081

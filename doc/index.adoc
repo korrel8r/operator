@@ -1,0 +1,19 @@
+= Installing the Korrel8r Operator
+:doctype: book
+:toc: left
+:toclevels: 3
+include::attributes.adoc[]
+
+== Latest release bundle image
+
+Install the https://sdk.operatorframework.io/docs/installation/[Operator SDK] tool.
+
+[source,terminal,subs=attributes+]
+----
+kubectl create namespace korrel8r
+operator-sdk -n korrel8r run bundle {quay-operator}-bundle:latest --security-context-config restricted
+----
+
+include::community-operator.adoc[leveloffset=+1]
+
+include::zz_api-ref.adoc[leveloffset=-1]

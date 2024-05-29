@@ -1,113 +1,153 @@
-# Hacking on the Korrel8r Operator
+== Hacking on the Korrel8r Operator
 
-## Getting Started
+=== Getting Started
 
-This project follows the Kubernetes [Operator pattern](https://kubernetes.io/docs/concepts/extend-kubernetes/operator/).
+This project follows the Kubernetes
+https://kubernetes.io/docs/concepts/extend-kubernetes/operator/[Operator
+pattern].
 
-It uses [Controllers](https://kubernetes.io/docs/concepts/architecture/controller/),
-which provide a reconcile function responsible for synchronizing resources until the desired state is reached on the cluster.
+It uses
+https://kubernetes.io/docs/concepts/architecture/controller/[Controllers],
+which provide a reconcile function responsible for synchronizing
+resources until the desired state is reached on the cluster.
 
-You’ll need a Kubernetes cluster to run against.
-You can use [KIND](https://sigs.k8s.io/kind) to get a local cluster for testing, or run against a remote cluster.
-See the [Korrel8r Documentation](https://korrel8r.github.io/korrel8r/) for more about setting up your cluster.
+You’ll need a Kubernetes cluster to run against. You can use
+https://sigs.k8s.io/kind[KIND] to get a local cluster for testing, or
+run against a remote cluster. See the
+https://korrel8r.github.io/korrel8r/[Korrel8r Documentation] for more
+about setting up your cluster.
 
-**Note:** Your controller will automatically use the current context in your kubeconfig file (i.e. whatever cluster `kubectl cluster-info` shows).
+*Note:* Your controller will automatically use the current context in
+your kubeconfig file (i.e. whatever cluster `kubectl cluster-info`
+shows).
 
-## Testing the operator
+=== Testing the operator
 
-Start the operator using one of the methods below, then use this script to verify it is working:
+Start the operator using one of the methods below, then use this script
+to verify it is working:
 
-```sh
+[source,sh]
+----
 hack/smoketest.sh
-```
+----
 
-The script creates a `Korrel8r` resource and verifies that it responds to REST API calls.
-If your operator is working correctly it should print some messages ending with "Success."
+The script creates a `Korrel8r` resource and verifies that it responds
+to REST API calls. If your operator is working correctly it should print
+some messages ending with ``Success.''
 
-You can customize your own korrel8r resource, and use a browser or REST tools to query it.
+You can customize your own korrel8r resource, and use a browser or REST
+tools to query it.
 
-### Running as a local process.
+==== Running as a local process.
 
-You can run the controller on your own development machine, outside the cluster. This is ideal for debugging.
+You can run the controller on your own development machine, outside the
+cluster. This is ideal for debugging.
 
-1. Install the CRDs into the cluster:
+[arabic]
+. Install the CRDs into the cluster:
 
-```sh
+[source,sh]
+----
 make install
-```
+----
 
-1. Run the controller (this will run in the foreground, so switch to a new terminal if you want to leave it running):
+[arabic]
+. Run the controller (this will run in the foreground, so switch to a
+new terminal if you want to leave it running):
 
-```sh
+[source,sh]
+----
 make run
-```
+----
 
-**NOTE:** You can also run this in one step by running: `make install run`
+*NOTE:* You can also run this in one step by running: `make install run`
 
-### Deploying via kustomize
+==== Deploying via kustomize
 
-1. Build and push your image to the location specified by `IMAGE`, which should be a base image name with no tag:
+[arabic]
+. Build and push your image to the location specified by `IMAGE`, which
+should be a base image name with no tag:
 
-```sh
+[source,sh]
+----
 make image-build image-push IMAGE=<some-image>
-```
+----
 
-1. Deploy the controller to the cluster with the image specified by `IMAGE`:
+[arabic]
+. Deploy the controller to the cluster with the image specified by
+`IMAGE`:
 
-```sh
+[source,sh]
+----
 make deploy IMG=<some-image>
-```
+----
 
-### Deploy as a bundle image
+==== Deploy as a bundle image
 
-1. Build and push your image to the location specified by `IMAGE`, which should be a base image name with no tag.
-This will create images $(IMAGE):$(VERSION) and $(IMAGE)-bundle:$(VERSION)
+[arabic]
+. Build and push your image to the location specified by `IMAGE`, which
+should be a base image name with no tag. This will create images
+latexmath:[$(IMAGE):$](VERSION) and
+latexmath:[$(IMAGE)-bundle:$](VERSION)
 
-```sh
+[source,sh]
+----
 make push-all IMAGE=<some-image>
-```
+----
 
-1. Run the bundle image on your cluster.
+[arabic]
+. Run the bundle image on your cluster.
 
-```sh
+[source,sh]
+----
 make bundle-run IMAGE=<some-image>
-```
+----
 
-## Cleaning up
+=== Cleaning up
 
-### Uninstall CRDs
+==== Uninstall CRDs
+
 To delete the CRDs from the cluster:
 
-```sh
+[source,sh]
+----
 make uninstall
-```
+----
 
-### Undeploy the controller
+==== Undeploy the controller
 
-```sh
+[source,sh]
+----
 make undeploy
-```
+----
 
-## Debugging
+=== Debugging
 
-The `KORREL8R_VERBOSE` environment variable to a numeric value to enable debug logs for the operator:
+The `KORREL8R_VERBOSE` environment variable to a numeric value to enable
+debug logs for the operator:
 
-0. The default - some start-up messages, and a single suceess/fail message per reconcile.
-1. Also list the objects modified during reconciliation.
-2. Also print a diff of each object modified during reconciliation.
+[arabic, start=0]
+. The default - some start-up messages, and a single suceess/fail
+message per reconcile.
+. Also list the objects modified during reconciliation.
+. Also print a diff of each object modified during reconciliation.
 
-## Modifying the API definitions
+=== Modifying the API definitions
 
-If you are editing the API definitions, generate the manifests such as CRs or CRDs using:
+If you are editing the API definitions, generate the manifests such as
+CRs or CRDs using:
 
-```sh
+[source,sh]
+----
 make manifests
-```
+----
 
-**NOTE:** Run `make --help` for more information on all potential `make` targets
+*NOTE:* Run `make --help` for more information on all potential `make`
+targets
 
-More information can be found via the [Kubebuilder Documentation](https://book.kubebuilder.io/introduction.html)
+More information can be found via the
+https://book.kubebuilder.io/introduction.html[Kubebuilder Documentation]
 
-## License
+=== License
 
 See: https://github.com/korrel8r/korrel8r/blob/main/LICENSE
