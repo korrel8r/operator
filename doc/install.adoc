@@ -1,6 +1,30 @@
-[id="installing-korrel8r-ocp"]
-= OperatorHub community operator
-include::attributes.adoc[]
+= Installing the operator
+:copyright: This file is part of korrel8r, released under https://github.com/korrel8r/korrel8r/blob/main/LICENSE
+:icons: font
+// Metadata
+:keywords: correlation, observability, resource, signal, kubernetes
+:description: Correlation of observability signal data
+// URLs
+:github: https://github.com/korrel8r/
+:project: {github}/operator#readme
+:quay-operator: quay.io/korrel8r/operator
+// abbreviations
+:red-hat: Red{nbsp}Hat
+:rh-ocp: {red-hat} OpenShift Container Platform
+:rh-console: link:https://docs.openshift.com/container-platform/latest/web_console/web-console-overview.html[{rh-ocp} web console]
+:logging: logging subsystem for {red-hat} OpenShift
+:operator: Korrel8r Community Operator
+
+== From latest release bundle
+Install the https://sdk.operatorframework.io/docs/installation/[Operator SDK] tool.
+
+[source,terminal,subs=attributes+]
+----
+kubectl create namespace korrel8r
+operator-sdk -n korrel8r run bundle {quay-operator}-bundle:latest --security-context-config restricted
+----
+
+= From OperatorHub
 
 There is a community operator for Korrel8r on OperatorHub.
 It has been tested with {rh-ocp}, it may or may not work with other k8s clusters.

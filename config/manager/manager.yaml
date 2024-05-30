@@ -25,7 +25,6 @@ spec:
         control-plane: controller-manager
     spec:
       securityContext:
-        runAsUser:
         allowPrivilegeEscalation: false
         capabilities:
           drop:
@@ -43,7 +42,6 @@ spec:
         image: controller
         name: manager
         securityContext:
-          runAsUser: 1000
           allowPrivilegeEscalation: false
           capabilities:
             drop:
