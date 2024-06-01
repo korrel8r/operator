@@ -6,11 +6,11 @@ help: ## Display this help.
 	@grep -E '^## [A-Z0-9_]+: ' Makefile | sed 's/^## \([A-Z0-9_]*\): \(.*\)/\1#\2/' | column -s'#' -t
 
 ## VERSION: Semantic version for release, use -dev for development pre-release versions.
-VERSION?=0.1.6
+VERSION?=0.1.7
 ## IMG_ORG: org name for images, for example quay.io/alanconway.
 IMG_ORG?=$(error Set IMG_ORG to organization prefix for images, e.g. IMG_ORG=quay.io/alanconway)
 ## KORREL8R_VERSION: Version of korrel8r operand.
-KORREL8R_VERSION=0.6.4
+KORREL8R_VERSION=0.6.6
 ## KORREL8R_IMAGE: Operand image containing the korrel8r executable.
 KORREL8R_IMAGE?=quay.io/korrel8r/korrel8r:$(KORREL8R_VERSION)
 ## NAMESPACE: Operator namespace used by `make deploy` and `make bundle-run`

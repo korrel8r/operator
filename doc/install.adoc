@@ -7,7 +7,6 @@
 // URLs
 :github: https://github.com/korrel8r/
 :project: {github}/operator#readme
-:quay-operator: quay.io/korrel8r/operator
 // abbreviations
 :red-hat: Red{nbsp}Hat
 :rh-ocp: {red-hat} OpenShift Container Platform
@@ -21,7 +20,7 @@ Install the https://sdk.operatorframework.io/docs/installation/[Operator SDK] to
 [source,terminal,subs=attributes+]
 ----
 kubectl create namespace korrel8r
-operator-sdk -n korrel8r run bundle {quay-operator}-bundle:latest --security-context-config restricted
+operator-sdk -n korrel8r run bundle quay.io/korrel8r/operator-bundle:latest --security-context-config restricted
 ----
 
 = From OperatorHub
