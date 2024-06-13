@@ -1,0 +1,30 @@
+name: Build
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v4
+        with:
+          go-version: "1.21"
+      - uses: actions/cache@v3
+        with:
+          path: ~/go
+          key: cache-${{ runner.os }}-${{ runner.arch }}
+
+      - name: Lint
+        run: make generate lint && git diff --exit-code
+
+      - name: Manifests
+        run: make REGISTRY_ORG=nowhere.io/nobody/nothing manifests
+
+      - name: Test
+        run: make test

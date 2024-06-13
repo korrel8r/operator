@@ -1,5 +1,7 @@
 # Korrel8r Operator
 
+[![Build](https://github.com/korrel8r/korrel8r/actions/workflows/build.yml/badge.svg)](https://github.com/korrel8r/korrel8r/actions/workflows/build.yml)
+
 This operator deploys [Korrel8r](https://github.com/korrel8r/korrel8r#readme) as a REST service in a Kubernetes cluster.
 
 - [Installing](doc/install.adoc)

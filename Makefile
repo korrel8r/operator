@@ -65,7 +65,7 @@ lint: $(GOLANGCI_LINT) ## Run linters, fix code style problems.
 	$(GOLANGCI_LINT) run --fix
 
 .PHONY: test
-test: manifests generate lint $(SETUP_ENVTEST) ## Run tests.
+test: generate lint $(SETUP_ENVTEST) ## Run tests.
 	$(shell $(SETUP_ENVTEST) use $(ENVTEST_K8S_VERSION) -p env); go test ./...
 
 ##@ Build
