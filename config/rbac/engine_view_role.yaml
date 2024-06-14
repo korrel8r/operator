@@ -3,8 +3,6 @@ kind: ClusterRole
 metadata:
   # Extra permissions added to the standard clusterrole/view for the korrel8r engine.
   name: engine-view
-  labels:
-    rbac.authorization.k8s.io/aggregate-to-view: "true"
 rules:
 - apiGroups:
   - '*'
