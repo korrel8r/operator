@@ -6,7 +6,7 @@ help: ## Display this help.
 	@grep -E '^## [A-Z0-9_]+: ' Makefile | sed 's/^## \([A-Z0-9_]*\): \(.*\)/\1#\2/' | column -s'#' -t
 
 ## VERSION: Semantic version for release, use -dev for development pre-release versions.
-VERSION?=0.1.8-dev
+VERSION?=0.1.8
 ## REGISTRY_BASE: registry/org-name for images.
 REGISTRY_BASE?=$(error Set REGISTRY_BASE to push or pull images)
 ## KORREL8R_VERSION: Version of korrel8r operand.

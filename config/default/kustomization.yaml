@@ -22,5 +22,5 @@ patches:
 
 images:
 - name: controller
-  newName: quay.io/alanconway/operator
-  newTag: 0.1.8-dev
+  newName: quay.io/korrel8r/operator
+  newTag: 0.1.8
