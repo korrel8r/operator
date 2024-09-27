@@ -6,6 +6,7 @@ This operator deploys [Korrel8r](https://github.com/korrel8r/korrel8r#readme) as
 
 - [Installing](doc/install.adoc)
 - [Custom resource API Reference](doc/zz_api-ref.adoc)
+
 - [Contributing to the operator code](doc/HACKING.adoc)
 
 <!-- ❗NOTE❗ All documentation on this site uses asciidoc, exccept for this README. -->

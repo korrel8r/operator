@@ -11,7 +11,7 @@ import (
 
 // Korrel8rSpec defines the desired state of Korrel8r
 type Korrel8rSpec struct {
-	// ServiceAccountName for the korrel8r deployment. Use namespace default if missing.
+	// ServiceAccountName for the korrel8r deployment, use 'default' if missing.
 	ServiceAccountName string `json:"serviceAccountName,omitempty"`
 
 	// ConfigMap containing optional custom configuration for Korrel8r.

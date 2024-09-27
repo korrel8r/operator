@@ -77,8 +77,8 @@ spec:
                     type: integer
                 type: object
               serviceAccountName:
-                description: ServiceAccountName for the korrel8r deployment. Use namespace
-                  default if missing.
+                description: ServiceAccountName for the korrel8r deployment, use 'default'
+                  if missing.
                 type: string
             type: object
           status:

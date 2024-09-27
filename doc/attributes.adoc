@@ -1,0 +1,10 @@
+:copyright: This file is part of korrel8r, released under https://github.com/korrel8r/korrel8r/blob/main/LICENSE
+:icons: font
+:keywords: correlation, observability, resource, signal, kubernetes
+:github: https://github.com/korrel8r/
+:project: {github}/operator#readme
+:red-hat: Red{nbsp}Hat
+:rh-ocp: {red-hat} OpenShift Container Platform
+:rh-console: https://docs.openshift.com/container-platform/latest/web_console/web-console-overview.html[{rh-ocp} web console]
+:rh-coo: https://docs.openshift.com/container-platform/latest/observability/cluster_observability_operator/cluster-observability-operator-overview.html[{red-hat} Cluster Observability Operator]
+:prewrap!:

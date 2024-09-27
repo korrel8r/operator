@@ -63,7 +63,7 @@ Korrel8rSpec defines the desired state of Korrel8r
 [cols="25a,75a", options="header"]
 |===
 | Field | Description
-| *`serviceAccountName`* __string__ | ServiceAccountName for the korrel8r deployment. Use namespace default if missing. +
+| *`serviceAccountName`* __string__ | ServiceAccountName for the korrel8r deployment, use 'default' if missing. +
 | *`configMap`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.29/#localobjectreference-v1-core[$$LocalObjectReference$$]__ | ConfigMap containing optional custom configuration for Korrel8r. +
 
 

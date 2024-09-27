@@ -6,8 +6,6 @@ resources:
   - auth_proxy_role.yaml
   - auth_proxy_role_binding.yaml
   - auth_proxy_service.yaml
-  - engine_view_binding.yaml
-  - engine_view_role.yaml
   - korrel8r_editor_role.yaml
   - korrel8r_viewer_role.yaml
   - role.yaml

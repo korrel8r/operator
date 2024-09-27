@@ -24,7 +24,7 @@ jobs:
         run: make generate lint && git diff --exit-code
 
       - name: Manifests
-        run: make REGISTRY_ORG=nowhere.io/nobody/nothing manifests
+        run: make REGISTRY_BASE=nowhere.io/nobody manifests
 
       - name: Test
         run: make test

@@ -7,12 +7,10 @@ help: ## Display this help.
 
 ## VERSION: Semantic version for release, use -dev for development pre-release versions.
 VERSION?=0.1.8-dev
-## REGISTRY: Name of image registry
-REGISTRY?=quay.io
-## REGISTRY_ORG: Name of registry organization.
-REGISTRY_ORG?=$(error Set REGISTRY_ORG to push or pull images)
+## REGISTRY_BASE: registry/org-name for images.
+REGISTRY_BASE?=$(error Set REGISTRY_BASE to push or pull images)
 ## KORREL8R_VERSION: Version of korrel8r operand.
-KORREL8R_VERSION=0.6.6
+KORREL8R_VERSION=0.7.2
 ## KORREL8R_IMAGE: Operand image containing the korrel8r executable.
 KORREL8R_IMAGE?=quay.io/korrel8r/korrel8r:$(KORREL8R_VERSION)
 ## NAMESPACE: Operator namespace used by `make deploy` and `make bundle-run`
@@ -23,7 +21,7 @@ IMGTOOL?=$(shell which podman || which docker)
 ENVTEST_K8S_VERSION=1.29.x
 
 # Names of image and bundle images.
-IMG?=$(REGISTRY)/$(REGISTRY_ORG)/operator
+IMG?=$(REGISTRY_BASE)/operator
 IMAGE=$(IMG):$(VERSION)
 BUNDLE_IMAGE ?= $(IMG)-bundle:$(VERSION)
 
@@ -153,18 +151,18 @@ resource:			## Create the default korrel8r resource
 
 OPHUB?=$(error Set OPHUB to the path to your local community-operators-prod clone)
 OPHUB_VERSION=$(OPHUB)/operators/korrel8r/$(VERSION)
-operatorhub: bundle		## Generate manifest for operator hub. Set OPHUB and REGISTRY_ORG.
-	@[ "$(origin REGISTRY_ORG)" = "command line" ] || { echo "REGISTRY_ORG must be set on the command line"; exit 1; }
+operatorhub: bundle		## Generate manifest for operator hub. Set OPHUB and REGISTRY_BASE.
+	@[ "$(origin REGISTRY_BASE)" = "command line" ] || { echo "REGISTRY_BASE must be set on the command line"; exit 1; }
 	@[ "$$(git status -s)" = "" ] || { git status; echo "working directory not clean"; exit 1; }
 	mkdir -p $(OPHUB_VERSION)
 	cp -aT bundle $(OPHUB_VERSION)
 	echo -e '\n  # Annotations for OperatorHub\n  com.redhat.openshift.versions: "v4.10"' >> $(OPHUB_VERSION)/metadata/annotations.yaml
 
 pre-release:			## Prepare a release commit.
-	@[ "$(origin REGISTRY_ORG)" = "command line" ] || { echo "REGISTRY_ORG must be set on the command line"; exit 1; }
+	@[ "$(origin REGISTRY_BASE)" = "command line" ] || { echo "REGISTRY_BASE must be set on the command line"; exit 1; }
 	$(MAKE) test-bundle
 
-release: pre-release		## Set VERISON and REGISTRY_ORG to push release tags and images.
+release: pre-release		## Set VERISON and REGISTRY_BASE to push release tags and images.
 	hack/tag-release.sh $(VERSION) $(TAG_FLAGS)
 	$(IMGTOOL) push $(IMAGE) $(IMG):latest
 	$(IMGTOOL) push $(BUNDLE_IMAGE) $(IMG)-bundle:latest
